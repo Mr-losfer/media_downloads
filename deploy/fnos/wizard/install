@@ -1,0 +1,48 @@
+[
+  {
+    "stepTitle": "管理员账号",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "设置 Media Super 后台管理员密码，至少 6 位。留空则使用默认密码 losfer，安装后可在应用设置的「管理员密码」中修改。"
+      },
+      {
+        "type": "password",
+        "field": "wizard_admin_password",
+        "label": "管理员密码",
+        "initValue": "",
+        "rules": [
+          { "min": 6, "message": "密码至少 6 位" }
+        ]
+      },
+      {
+        "type": "password",
+        "field": "wizard_admin_password2",
+        "label": "确认密码",
+        "initValue": "",
+        "rules": [
+          { "min": 6, "message": "请再次输入相同的密码" }
+        ]
+      }
+    ]
+  },
+  {
+    "stepTitle": "服务端口",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "Media Super 的 Web 管理界面与 API 端口，默认 9099，取值范围 1024-65535。安装时会自动检查端口是否被占用。"
+      },
+      {
+        "type": "text",
+        "field": "wizard_port",
+        "label": "Web 端口",
+        "initValue": "9099",
+        "rules": [
+          { "required": true, "message": "请输入端口" },
+          { "pattern": "^[0-9]{4,5}$", "message": "端口只能是 4-5 位数字" }
+        ]
+      }
+    ]
+  }
+]

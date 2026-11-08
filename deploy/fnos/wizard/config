@@ -1,0 +1,45 @@
+[
+  {
+    "stepTitle": "管理员密码",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "留空表示不修改当前密码。填写后会在应用重启时生效，请输入至少 6 位。"
+      },
+      {
+        "type": "password",
+        "field": "wizard_admin_password",
+        "label": "新管理员密码",
+        "rules": [
+          { "min": 6, "message": "密码至少 6 位" }
+        ]
+      },
+      {
+        "type": "password",
+        "field": "wizard_admin_password2",
+        "label": "确认新密码",
+        "rules": [
+          { "min": 6, "message": "请再次输入相同的新密码" }
+        ]
+      }
+    ]
+  },
+  {
+    "stepTitle": "服务端口",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "留空表示保持当前端口不变。修改后应用会自动重启，桌面入口会同步指向新端口。"
+      },
+      {
+        "type": "text",
+        "field": "wizard_port",
+        "label": "Web 端口（留空不变）",
+        "initValue": "",
+        "rules": [
+          { "pattern": "^([0-9]{4,5})?$", "message": "端口只能是 4-5 位数字" }
+        ]
+      }
+    ]
+  }
+]

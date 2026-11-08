@@ -1,3 +1,38 @@
 #!/bin/bash
-# 安装完成：不自动启动，交给应用中心「启动」按钮或用户首次打开
+# 安装完成：把安装向导收集的密码和端口落到配置目录
+#   wizard_admin_password / wizard_admin_password2 : 管理员密码（留空用 losfer）
+#   wizard_port                                   : Web 端口（默认 9099）
+set -u
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
+
+MAIN="${TRIM_APPDEST}/cmd/main"
+ETC_DIR="${TRIM_PKGETC:-/var/apps/mediasuper/etc}"
+
+fail() {
+  if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
+    echo "$1" >> "${TRIM_TEMP_LOGFILE}"
+  else
+    echo "$1" >&2
+  fi
+  exit 1
+}
+
+[ -x "$MAIN" ] || fail "缺少生命周期脚本 ${MAIN}，安装包可能不完整。"
+
+PW="${wizard_admin_password:-}"
+PW2="${wizard_admin_password2:-}"
+PORT="${wizard_port:-9099}"
+
+[ -n "$PW" ] || PW="losfer"
+[ -n "$PW2" ] || PW2="$PW"
+[ "$PW" = "$PW2" ] || fail "两次输入的管理员密码不一致，请重新安装。"
+[ "${#PW}" -ge 6 ] || fail "管理员密码至少 6 位，请重新安装。"
+
+mkdir -p "$ETC_DIR" || fail "无法创建配置目录 ${ETC_DIR}"
+
+bash "$MAIN" checkport "$PORT" || fail "端口 ${PORT} 不可用，请重新安装并换一个端口。"
+bash "$MAIN" setpass "$PW" || fail "写入管理员密码失败。"
+bash "$MAIN" setport "$PORT" || fail "端口 ${PORT} 不合法或写入失败。"
+
 exit 0

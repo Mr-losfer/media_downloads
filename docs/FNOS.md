@@ -7,8 +7,8 @@ Media Super 的 fpk 模板在 [`deploy/fnos/`](../deploy/fnos)，打包脚本是
 
 ```bash
 ./scripts/build-fpk.sh
-# build/mediasuper_2.2.0_fnos-x86.fpk
-# build/mediasuper_2.2.0_fnos-arm.fpk
+# build/mediasuper_2.3.0_fnos-x86.fpk
+# build/mediasuper_2.3.0_fnos-arm.fpk
 ```
 
 脚本会自动：
@@ -33,19 +33,23 @@ mediasuper/
 │   ├── privilege            # run-as=package + 专用用户
 │   └── resource             # 共享目录 mediasuper/downloads
 ├── cmd/                     # 生命周期脚本
-│   ├── main                 # start / stop / status / restart
+│   ├── main                 # start / stop / status / restart + setport / setpass
 │   ├── install_init         # 建数据目录
-│   ├── install_callback
+│   ├── install_callback     # 写入安装向导的密码与端口
 │   ├── upgrade_init         # 升级前停服务
-│   ├── upgrade_callback     # 升级后启动
+│   ├── upgrade_callback     # 补齐端口配置后启动
 │   ├── uninstall_init       # 卸载前停服务
 │   ├── uninstall_callback
 │   ├── config_init
-│   └── config_callback
+│   └── config_callback      # 应用设置里改端口 / 密码
+├── wizard/                  # 向导表单（JSON）
+│   ├── install              # 安装时：管理员密码 + 端口
+│   ├── upgrade              # 升级时：确认端口
+│   └── config               # 应用设置「配置」：改密码 / 端口
 └── app/
     ├── server/mediasuper    # 二进制
     └── ui/
-        ├── config           # 桌面入口（iframe，端口 9099）
+        ├── config           # 桌面入口（iframe，端口 ${wizard_port}）
         └── images/icon-64.png, icon-256.png
 ```
 
@@ -53,15 +57,19 @@ mediasuper/
 
 ```ini
 appname      = mediasuper
-version      = 2.2.0
+version      = 2.3.0
 display_name = Media Super
 platform     = x86          # 或 arm，每个包只装一种架构
 source       = thirdparty
 service_port = 9099
+checkport    = false
 ctl_stop     = true
 desktop_uidir = ui
 desktop_applaunchname = mediasuper.main
 ```
+
+`service_port` 只是默认值，真实端口由安装向导决定；`checkport = false` 是因为端口
+由应用自己校验（用户改过端口后，系统再按 9099 检查会误判）。
 
 `app/ui/config` 决定桌面图标点开后的行为（`iframe` 会在飞牛窗口内打开，比新标签页体验好）：
 
@@ -73,7 +81,7 @@ desktop_applaunchname = mediasuper.main
       "icon": "images/icon-{0}.png",
       "type": "iframe",
       "protocol": "http",
-      "port": "9099",
+      "port": "${wizard_port}",
       "url": "/",
       "allUsers": true
     }
@@ -94,8 +102,18 @@ desktop_applaunchname = mediasuper.main
 | `etc/` | `/vol{n}/@appconf/mediasuper` | 配置 |
 | `share/` | 共享目录 | `mediasuper/downloads`，文件管理器里可见 |
 
-生命周期脚本用 `TRIM_APPDEST` / `TRIM_PKGVAR` / `TRIM_SERVICE_PORT` / `TRIM_DATA_SHARE_PATHS`
+生命周期脚本用 `TRIM_APPDEST` / `TRIM_PKGVAR` / `TRIM_PKGETC` / `TRIM_DATA_SHARE_PATHS`
 这些环境变量定位目录，不写死路径。
+
+端口与密码的持久化：
+
+| 文件 | 内容 | 说明 |
+|---|---|---|
+| `etc/settings.conf` | `PORT=9099` | 安装向导 / 应用设置写入，启动时优先读取 |
+| `etc/.resetpass` | 待生效的管理员密码 | `0600`，启动时通过 `mediasuper -reset-password` 落库后立即删除 |
+| `etc/.initpass` | 首次安装密码（兜底） | 仅首次启动使用，落库后删除 |
+
+端口优先级：`settings.conf` → `TRIM_SERVICE_PORT`（manifest 默认值）→ `9099`。
 
 下载目录优先用共享目录 `mediasuper/downloads`；没有共享目录时退回
 `/var/apps/mediasuper/var/downloads`。
@@ -107,10 +125,36 @@ desktop_applaunchname = mediasuper.main
 1. 到 [Releases](https://github.com/losfer778/media_downloads/releases) 下载对应架构的 fpk
    （`x86` 对应 Intel/AMD，`arm` 对应 ARM 机型）；
 2. 飞牛桌面 → 应用中心 → 右上角「手动安装」→ 选择 fpk；
-3. 安装完成后从桌面图标或应用中心打开，地址形如 `http://<NAS-IP>:9099`；
-4. 默认密码 `losfer`，登录后到「设置 → 管理员密码」修改。
+3. 安装向导会依次询问两项配置：
 
-端口 9099 被占用时，改 `manifest` 的 `service_port` 与 `app/ui/config` 的 `port` 后重新打包。
+   | 步骤 | 字段 | 说明 |
+   |---|---|---|
+   | 管理员账号 | 管理员密码 / 确认密码 | 至少 6 位；**留空则使用默认密码 `losfer`** |
+   | 服务端口 | Web 端口 | 默认 `9099`，范围 `1024-65535`，安装时自动检查占用 |
+
+4. 安装完成后从桌面图标或应用中心打开，地址形如 `http://<NAS-IP>:<你填的端口>`；
+5. 安装后仍可在应用中心 → Media Super →「配置」里改密码或换端口。
+
+> 密码不会明文留在磁盘上：向导值先写到 `etc/.resetpass`（`0600`），首次启动时
+> 通过 `mediasuper -reset-password` 写进数据库的 PBKDF2 哈希，随后立刻删除该文件。
+
+### 安装后修改端口 / 密码
+
+应用中心 → Media Super →「配置」：
+
+- **新管理员密码**：留空表示不改；填了就校验长度与两次一致；
+- **Web 端口**：留空表示不改；新端口会先做占用检查，可用才写配置。
+
+提交后 `config_callback` 会先停服务、写配置、再启动。启动时会把真实端口回写到
+`app/ui/config`，保证桌面图标指向新端口（兼容不解析 `${wizard_port}` 的旧版系统）。
+
+也可以命令行改：
+
+```bash
+/var/apps/mediasuper/cmd/main setport 9098    # 校验并写入 settings.conf
+/var/apps/mediasuper/cmd/main setpass 'newpass'
+/var/apps/mediasuper/cmd/main restart
+```
 
 ---
 
@@ -131,7 +175,11 @@ tail -f /var/apps/mediasuper/var/mediasuper.log
 常见问题：
 
 **启动失败，日志里提示端口占用**
-换个端口重新打包，或先在应用中心停掉占用 9099 的应用。
+到应用中心 →「配置」换一个端口即可，不用重新打包；也可以先停掉占用该端口的应用。
+
+**升级后忘记端口**
+看 `/var/apps/mediasuper/etc/settings.conf` 里的 `PORT`，或执行
+`/var/apps/mediasuper/cmd/main resolve-port`。
 
 **m3u8 能下但合成不了 mp4**
 系统里没有 `ffmpeg`。飞牛自带 ffmpeg 的机型会自动命中 `/usr/bin/ffmpeg` 或 `/usr/trim/bin/ffmpeg`；
@@ -172,6 +220,7 @@ sudo systemctl restart trim_app_center.service
 | 应用框架 / 生命周期 | <https://developer.fnnas.com/docs/core-concepts/framework/> |
 | manifest 字段 | <https://developer.fnnas.com/docs/core-concepts/manifest/> |
 | 环境变量 | <https://developer.fnnas.com/docs/core-concepts/environment-variables/> |
+| 安装向导 | <https://developer.fnnas.com/docs/core-concepts/wizard/> |
 | 权限 | <https://developer.fnnas.com/docs/core-concepts/privilege/> |
 | 资源声明 | <https://developer.fnnas.com/docs/core-concepts/resource/> |
 | fnpack | <https://developer.fnnas.com/docs/cli/fnpack/> |

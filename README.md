@@ -67,7 +67,8 @@ docker run -d --name mediasuper --restart unless-stopped \
 ### 方式三：飞牛 fnOS（fpk）
 
 到 [Releases](https://github.com/losfer778/media_downloads/releases) 下载 `mediasuper_<版本>_fnos-x86.fpk` 或 `_fnos-arm.fpk`，
-在应用中心手动安装即可。打包与调试见 [docs/FNOS.md](docs/FNOS.md)。
+在应用中心手动安装即可。**安装向导里可直接设置管理员密码和 Web 端口**（密码留空则为 `losfer`，
+端口默认 `9099`），装好后也能在应用中心 →「配置」里随时修改。打包与调试见 [docs/FNOS.md](docs/FNOS.md)。
 
 ### 方式四：裸机二进制
 

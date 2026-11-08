@@ -1,7 +1,50 @@
 #!/bin/bash
-# 配置变更后重启，让新的端口/目录生效
+# 应用设置里改完端口/密码：先停服务，写配置，再启动
+#   wizard_port                 : 留空表示端口不变
+#   wizard_admin_password       : 留空表示密码不变
+#   wizard_admin_password2      : 确认密码
 set -u
-if [ -x "${TRIM_APPDEST}/cmd/main" ]; then
-  bash "${TRIM_APPDEST}/cmd/main" restart || true
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
+
+MAIN="${TRIM_APPDEST}/cmd/main"
+[ -x "$MAIN" ] || exit 0
+
+PORT="${wizard_port:-}"
+PW="${wizard_admin_password:-}"
+PW2="${wizard_admin_password2:-}"
+
+fail() {
+  if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
+    echo "$1" >> "${TRIM_TEMP_LOGFILE}"
+  else
+    echo "$1" >&2
+  fi
+  exit 1
+}
+
+if [ -n "$PW" ]; then
+  [ "${#PW}" -ge 6 ] || fail "管理员密码至少 6 位。"
+  if [ -n "$PW2" ] && [ "$PW" != "$PW2" ]; then
+    fail "两次输入的新密码不一致。"
+  fi
 fi
+# 先校验端口，避免改失败还把服务停了；端口没变时不检查（否则会撞到自己）
+if [ -n "$PORT" ] && [ "$PORT" != "$(bash "$MAIN" resolve-port)" ]; then
+  bash "$MAIN" checkport "$PORT" || fail "端口 ${PORT} 不可用，配置未修改。"
+fi
+
+bash "$MAIN" stop || true
+
+if [ -n "$PORT" ]; then
+  bash "$MAIN" setport "$PORT" || fail "端口 ${PORT} 不合法，未做任何修改。"
+else
+  bash "$MAIN" setport "$(bash "$MAIN" resolve-port)" || true
+fi
+
+if [ -n "$PW" ]; then
+  bash "$MAIN" setpass "$PW" || fail "写入新密码失败。"
+fi
+
+bash "$MAIN" start || true
 exit 0

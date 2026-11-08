@@ -1,17 +1,95 @@
 #!/bin/bash
-# Media Super 生命周期脚本：start / stop / status
+# Media Super 生命周期脚本：start / stop / status / restart
+#   辅助命令：setport <port> / setpass <password> / resolve-port
+#
+# 端口优先级：${TRIM_PKGETC}/settings.conf 的 PORT > 安装向导注入的 TRIM_SERVICE_PORT > 9099
+# 密码：安装向导写入 .initpass（仅首次启动读取一次）；应用设置里改密码写入 .resetpass。
 set -u
 
-APP_DIR="${TRIM_APPDEST}"
-VAR_DIR="${TRIM_PKGVAR}"
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
+
+APP_DIR="${TRIM_APPDEST:-/var/apps/mediasuper/target}"
+VAR_DIR="${TRIM_PKGVAR:-/var/apps/mediasuper/var}"
+ETC_DIR="${TRIM_PKGETC:-/var/apps/mediasuper/etc}"
 DATA_DIR="${VAR_DIR}/data"
+CONF_FILE="${ETC_DIR}/settings.conf"
+INIT_PASS_FILE="${ETC_DIR}/.initpass"
+RESET_PASS_FILE="${ETC_DIR}/.resetpass"
 LOG_FILE="${VAR_DIR}/mediasuper.log"
 PID_FILE="${VAR_DIR}/mediasuper.pid"
-PORT="${TRIM_SERVICE_PORT:-9099}"
 BIN="${APP_DIR}/server/mediasuper"
+UI_CONF="${APP_DIR}/ui/config"
+DEFAULT_PORT=9099
 
 log_msg() {
   echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "${LOG_FILE}"
+}
+
+fail() {
+  log_msg "错误：$1"
+  if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
+    echo "$1" >> "${TRIM_TEMP_LOGFILE}"
+  else
+    echo "$1" >&2
+  fi
+  exit 1
+}
+
+# 合法的 TCP 端口（1024-65535），拒绝前导零和空值
+valid_port() {
+  case "${1:-}" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  [ "${#1}" -ge 4 ] && [ "${#1}" -le 5 ] || return 1
+  local p=$((10#$1))
+  [ "$p" -ge 1024 ] && [ "$p" -le 65535 ]
+}
+
+port_in_use() {
+  local p="$1"
+  (exec 3<>"/dev/tcp/127.0.0.1/${p}") 2>/dev/null || return 1
+  exec 3<&- 3>&- 2>/dev/null
+  return 0
+}
+
+read_conf_port() {
+  [ -r "${CONF_FILE}" ] || return 0
+  sed -n 's/^[[:space:]]*PORT[[:space:]]*=[[:space:]]*//p' "${CONF_FILE}" | tail -n 1 | tr -d '[:space:]'
+}
+
+write_conf_port() {
+  local port="$1"
+  mkdir -p "${ETC_DIR}" || fail "无法创建配置目录 ${ETC_DIR}"
+  cat > "${CONF_FILE}" <<CONF
+# 由 Media Super 安装向导 / 应用设置写入，请勿手工改成非法值
+PORT=${port}
+CONF
+  chmod 0644 "${CONF_FILE}" 2>/dev/null || true
+}
+
+# 桌面入口里的 ${wizard_port} 在部分旧版 fnOS 上不会被替换，
+# 这里再用真实端口覆盖一遍，保证点图标能打开。
+rewrite_ui_conf() {
+  local port="$1"
+  [ -f "${UI_CONF}" ] || return 0
+  if grep -q '"port"' "${UI_CONF}" 2>/dev/null; then
+    sed -i "s/\"port\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"port\": \"${port}\"/" "${UI_CONF}" 2>/dev/null || true
+  fi
+}
+
+resolve_port() {
+  local p
+  p="$(read_conf_port)"
+  if valid_port "$p"; then
+    echo "$p"
+    return 0
+  fi
+  p="${TRIM_SERVICE_PORT:-}"
+  if valid_port "$p"; then
+    echo "$p"
+    return 0
+  fi
+  echo "${DEFAULT_PORT}"
 }
 
 is_running() {
@@ -22,17 +100,43 @@ is_running() {
   kill -0 "${pid}" 2>/dev/null
 }
 
+apply_pending_password() {
+  [ -r "${RESET_PASS_FILE}" ] || return 0
+  local pw
+  pw="$(cat "${RESET_PASS_FILE}")"
+  if [ -z "${pw}" ]; then
+    rm -f "${RESET_PASS_FILE}"
+    return 0
+  fi
+  log_msg "检测到待生效的管理员密码，正在写入数据库"
+  if "${BIN}" -reset-password "${pw}" -data "${DATA_DIR}" >> "${LOG_FILE}" 2>&1; then
+    rm -f "${RESET_PASS_FILE}"
+    log_msg "管理员密码已更新"
+  else
+    fail "管理员密码更新失败，请查看日志：${LOG_FILE}"
+  fi
+}
+
 start_app() {
   if is_running; then
     return 0
   fi
 
   if [ ! -x "${BIN}" ]; then
-    echo "找不到可执行文件 ${BIN}，请重新安装应用。" > "${TRIM_TEMP_LOGFILE:-/dev/stderr}"
-    exit 1
+    fail "找不到可执行文件 ${BIN}，请重新安装应用。"
   fi
 
-  mkdir -p "${DATA_DIR}" || exit 1
+  mkdir -p "${DATA_DIR}" || fail "无法创建数据目录 ${DATA_DIR}"
+
+  apply_pending_password
+
+  local port fresh_password=0
+  port="$(resolve_port)"
+  if port_in_use "$port"; then
+    fail "端口 ${port} 已被其他程序占用，请到「应用设置」里换一个端口。"
+  fi
+  # 把实际端口同步到桌面入口，旧版 fnOS 不解析 ${wizard_port} 时也能点开
+  rewrite_ui_conf "$port"
 
   # 下载目录：优先用共享目录（用户在文件管理里能看到），没有就退回应用数据目录
   local share="${TRIM_DATA_SHARE_PATHS%%:*}"
@@ -41,32 +145,46 @@ start_app() {
     mkdir -p "${share}"
   fi
 
-  export MS_ADDR=":${PORT}"
+  export MS_ADDR=":${port}"
   export MS_DATA_DIR="${DATA_DIR}"
   export MS_FFMPEG="${MS_FFMPEG:-ffmpeg}"
   export MS_SAVE_DIRS="${MS_SAVE_DIRS:-${share}:下载}"
   export MS_DEFAULT_DIR="${MS_DEFAULT_DIR:-${share}}"
-  # 首次安装用默认密码 losfer，之后密码存在数据库里，这里的变量就不再起作用
-  if [ -z "${MS_ADMIN_PASS:-}" ] && [ ! -f "${DATA_DIR}/mediasuper.db" ]; then
-    export MS_ADMIN_PASS=losfer
+
+  # 首次安装：安装向导填的密码只在这里用一次，落库后立刻删掉明文
+  if [ ! -f "${DATA_DIR}/mediasuper.db" ]; then
+    if [ -r "${INIT_PASS_FILE}" ]; then
+      MS_ADMIN_PASS="$(cat "${INIT_PASS_FILE}")"
+      export MS_ADMIN_PASS
+      fresh_password=1
+    elif [ -z "${MS_ADMIN_PASS:-}" ]; then
+      export MS_ADMIN_PASS=losfer
+      fresh_password=1
+    fi
   fi
 
-  log_msg "启动 Media Super ${TRIM_APPVER}，端口 ${PORT}，数据目录 ${DATA_DIR}"
+  log_msg "启动 Media Super ${TRIM_APPVER:-}，端口 ${port}，数据目录 ${DATA_DIR}"
   nohup "${BIN}" >> "${LOG_FILE}" 2>&1 &
   echo $! > "${PID_FILE}"
 
   local i=0
-  while [ "${i}" -lt 15 ]; do
-    if is_running; then
-      log_msg "启动成功，PID $(cat "${PID_FILE}")"
+  while [ "${i}" -lt 20 ]; do
+    if is_running && [ -f "${DATA_DIR}/mediasuper.db" ] && port_in_use "$port"; then
+      if [ "${fresh_password}" = "1" ]; then
+        rm -f "${INIT_PASS_FILE}"
+      fi
+      log_msg "启动成功，PID $(cat "${PID_FILE}")，端口 ${port}"
       return 0
+    fi
+    if ! is_running; then
+      break
     fi
     sleep 1
     i=$((i + 1))
   done
 
-  echo "Media Super 启动失败，请查看日志：${LOG_FILE}" > "${TRIM_TEMP_LOGFILE:-/dev/stderr}"
-  exit 1
+  rm -f "${PID_FILE}"
+  fail "Media Super 启动失败，请查看日志：${LOG_FILE}"
 }
 
 stop_app() {
@@ -92,9 +210,13 @@ stop_app() {
   return 0
 }
 
-case "$1" in
-  start)   start_app ;;
-  stop)    stop_app ;;
+case "${1:-}" in
+  start)
+    start_app
+    ;;
+  stop)
+    stop_app
+    ;;
   status)
     if is_running; then exit 0; else exit 3; fi
     ;;
@@ -102,8 +224,34 @@ case "$1" in
     stop_app
     start_app
     ;;
+  resolve-port)
+    resolve_port
+    ;;
+  checkport)
+    check_port="${2:-}"
+    valid_port "$check_port" || fail "端口不合法：${check_port:-（空）}，请填写 1024-65535 之间的数字。"
+    if port_in_use "$check_port"; then
+      fail "端口 ${check_port} 已被其他程序占用，请换一个端口。"
+    fi
+    ;;
+  setport)
+    new_port="${2:-}"
+    valid_port "$new_port" || fail "端口不合法：${new_port:-（空）}，请填写 1024-65535 之间的数字。"
+    write_conf_port "$new_port"
+    rewrite_ui_conf "$new_port"
+    log_msg "端口已设置为 ${new_port}"
+    ;;
+  setpass)
+    new_pass="${2:-}"
+    [ -n "$new_pass" ] || fail "新密码不能为空。"
+    [ "${#new_pass}" -ge 6 ] || fail "管理员密码至少 6 位。"
+    mkdir -p "${ETC_DIR}" || fail "无法创建配置目录 ${ETC_DIR}"
+    printf '%s' "$new_pass" > "${RESET_PASS_FILE}"
+    chmod 0600 "${RESET_PASS_FILE}" 2>/dev/null || true
+    log_msg "已记录待生效的管理员密码"
+    ;;
   *)
-    echo "unknown command: $1" >&2
+    echo "unknown command: ${1:-}" >&2
     exit 1
     ;;
 esac

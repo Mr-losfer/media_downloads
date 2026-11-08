@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"mediasuper/internal/app"
+	"mediasuper/internal/engine"
 	"mediasuper/internal/server"
 	"mediasuper/internal/version"
 )
@@ -24,11 +26,19 @@ func main() {
 	key := flag.String("key", envAny("MS_API_KEY", "VF_API_KEY", ""), "API Key（stdio 模式）")
 	showVer := flag.Bool("version", false, "打印版本号后退出")
 	noUpdate := flag.Bool("no-update-check", false, "启动时不检查更新")
+	resetPW := flag.String("reset-password", "", "重置管理员密码后退出（供 fpk 安装/配置脚本调用）")
 	flag.Parse()
 	log.SetFlags(log.LstdFlags)
 
 	if *showVer {
 		fmt.Printf("%s %s (commit %s, built %s)\n", version.Name, version.Version, version.Commit, version.BuildTime)
+		return
+	}
+	if *resetPW != "" {
+		if err := resetPassword(*dataDir, *resetPW); err != nil {
+			log.Fatalf("重置密码失败: %v", err)
+		}
+		fmt.Println("管理员密码已更新")
 		return
 	}
 	if *stdio {
@@ -53,4 +63,33 @@ func envAny(keys ...string) string {
 		}
 	}
 	return ""
+}
+
+// resetPassword 直接把新密码哈希写进数据库，供 fpk 安装/配置脚本调用。
+// bbolt 是独占锁，调用前必须先停掉服务。
+func resetPassword(dataDir, pw string) error {
+	if len(pw) < 6 {
+		return fmt.Errorf("密码至少 6 位")
+	}
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		return err
+	}
+	dbPath := filepath.Join(dataDir, "mediasuper.db")
+	if _, err := os.Stat(dbPath); err != nil {
+		oldPath := filepath.Join(dataDir, "vidfetch.db")
+		if _, err2 := os.Stat(oldPath); err2 == nil {
+			_ = os.Rename(oldPath, dbPath)
+		}
+	}
+	db, err := engine.OpenStore(dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	h, err := server.HashPassword(pw)
+	if err != nil {
+		return err
+	}
+	return db.MetaPut("pass_hash", h)
 }

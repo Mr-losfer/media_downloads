@@ -1,0 +1,20 @@
+[
+  {
+    "stepTitle": "服务端口",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "保留当前端口直接下一步即可。安装过旧版本（没有配置过端口）的机器默认使用 9099。"
+      },
+      {
+        "type": "text",
+        "field": "wizard_port",
+        "label": "Web 端口",
+        "initValue": "9099",
+        "rules": [
+          { "pattern": "^[0-9]{4,5}$", "message": "端口只能是 4-5 位数字" }
+        ]
+      }
+    ]
+  }
+]

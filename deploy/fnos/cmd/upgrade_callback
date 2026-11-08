@@ -1,7 +1,18 @@
 #!/bin/bash
-# 升级完成：数据目录（var）原样保留，直接重启服务
+# 升级完成：保留原有端口与密码，只补齐配置后重启
 set -u
-if [ -x "${TRIM_APPDEST}/cmd/main" ]; then
-  bash "${TRIM_APPDEST}/cmd/main" start || true
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
+
+MAIN="${TRIM_APPDEST}/cmd/main"
+[ -x "$MAIN" ] || exit 0
+
+# 升级向导里如果填了端口就用新的，否则沿用旧配置
+if [ -n "${wizard_port:-}" ]; then
+  bash "$MAIN" setport "${wizard_port}" || true
+else
+  bash "$MAIN" setport "$(bash "$MAIN" resolve-port)" || true
 fi
+
+bash "$MAIN" start || true
 exit 0
