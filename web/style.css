@@ -126,7 +126,7 @@ a { color: var(--info); text-decoration: underline; text-underline-offset: 3px; 
 .page-title { display: none; }
 
 /* 弹层、代码块内部滚动不把整页一起带动 */
-.sheet-mask, .sheet, .code pre, .notes-pre, textarea { overscroll-behavior: contain; }
+.sheet-mask, .sheet, .code pre, .notes-pre, .chg-box, textarea { overscroll-behavior: contain; }
 
 h1, h2, h3, h4 { margin: 0; font-weight: 640; letter-spacing: -.018em; }
 
@@ -1457,4 +1457,148 @@ main {
   /* auto-fit：只有一条任务时自动铺满整行，多了才分两列 */
   .tasks { display: grid; grid-template-columns: repeat(auto-fit, minmax(430px, 1fr)); gap: 12px; }
   .tasks .empty { grid-column: 1 / -1; }
+}
+
+/* ============================================================
+   更新内容高亮 / 首页新版本弹窗
+   ============================================================ */
+.chg-box {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  max-height: 300px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.chg-list { display: flex; flex-direction: column; gap: 7px; }
+.chg-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--fg-dim);
+  word-break: break-word;
+}
+.chg-tag {
+  flex: none;
+  margin-top: 1px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.chg-tag.t-feat { color: var(--ok); background: rgba(69, 217, 155, .13); }
+.chg-tag.t-fix  { color: var(--err); background: rgba(255, 97, 97, .12); }
+.chg-tag.t-perf { color: var(--info); background: rgba(111, 179, 255, .13); }
+.chg-tag.t-info { color: var(--sig); background: var(--sig-soft); }
+.chg-text { flex: 1; min-width: 0; }
+.chg-text mark.hl {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--sig-soft);
+  color: var(--sig);
+  font-weight: 650;
+}
+.chg-text code.hl-code {
+  font-family: var(--mono);
+  font-size: .92em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--code-fg);
+  white-space: nowrap;
+}
+.chg-text b.hl-ver {
+  font-family: var(--mono);
+  color: var(--sig);
+  font-weight: 650;
+}
+.chg-empty { margin: 0; font-size: 12.5px; color: var(--fg-mute); }
+
+/* 弹窗：左侧单独「不再更新此版本」，右侧「取消更新 / 确认更新」 */
+.upd-sheet { max-width: 560px; }
+.upd-dialog { padding: 2px 2px 4px; }
+.upd-head { margin-bottom: 14px; }
+.upd-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  letter-spacing: .04em;
+  color: var(--sig);
+  font-weight: 600;
+}
+.upd-kicker i {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--sig);
+  box-shadow: 0 0 0 3px var(--sig-soft);
+}
+.upd-ver {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.upd-ver .from {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--fg-mute);
+  text-decoration: line-through;
+  text-decoration-color: var(--line-2);
+}
+.upd-ver .arrow { color: var(--fg-mute); font-size: 16px; }
+.upd-ver strong {
+  font-family: var(--mono);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  color: var(--sig);
+  line-height: 1.15;
+}
+.upd-date { margin: 5px 0 0; font-size: 11.5px; color: var(--fg-mute); }
+.upd-sec-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--fg-mute);
+  font-weight: 620;
+  margin: 0 0 2px;
+}
+.upd-dialog .chg-box { max-height: 38dvh; }
+.upd-warn { margin: 10px 0 0; font-size: 12px; color: var(--err); }
+.upd-dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.upd-dialog-actions .spacer { flex: 1 1 auto; min-width: 0; }
+.upd-dialog-actions button { min-height: 42px; }
+.upd-dialog-actions .upd-skip {
+  font-size: 12.5px;
+  color: var(--fg-mute);
+  padding: 0 10px;
+  border-color: var(--line);
+}
+.upd-dialog-actions .upd-skip:hover { color: var(--fg); border-color: var(--line-2); }
+.upd-skip-note {
+  margin: 9px 0 0;
+  font-size: 11.5px;
+  color: var(--fg-mute);
+  line-height: 1.5;
+}
+@media (max-width: 420px) {
+  .upd-dialog-actions { gap: 6px; }
+  .upd-dialog-actions button { font-size: 12px; padding: 0 9px; }
+  .upd-dialog-actions .upd-skip { font-size: 11.5px; padding: 0 6px; }
+  .upd-ver strong { font-size: 26px; }
 }

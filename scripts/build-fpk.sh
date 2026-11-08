@@ -25,9 +25,14 @@ if [ -z "${VERSION:-}" ]; then
 fi
 [ -n "$VERSION" ] || { echo "无法确定版本号" >&2; exit 1; }
 
+# 与 build-release.sh 共用同一份「更新内容」文件
+if [ -z "${NOTES:-}" ] && [ -f .release-notes ]; then
+  NOTES="$(sed -e 's/[[:space:]]*$//' .release-notes)"
+fi
 CHANGELOG="${NOTES:-$(git log -1 --pretty=%s 2>/dev/null || echo "Media Super v${VERSION}")}"
-# manifest 是 key=value 文本，fnpack 会把 # 当注释、= 当分隔，先把它们和换行清掉
-CHANGELOG="$(printf '%s' "$CHANGELOG" | tr '\r\n' '  ' | sed -e 's/#/ /g' -e 's/=/-/g' | cut -c1-300)"
+# manifest 是 key=value 文本，fnpack 会把 # 当注释、= 当分隔、换行当多条记录。
+# 这里只取更新内容首行做摘要，并去掉 **重点** / 反引号等标记，避免多行被截断成乱码。
+CHANGELOG="$(printf '%s' "$CHANGELOG" | head -n 1 | sed -e 's/[`*]//g' -e 's/#/ /g' -e 's/=/-/g' | cut -c1-240)"
 
 # ---------- 准备 fnpack ----------
 FNPAK="${FNPAK:-fnpack}"

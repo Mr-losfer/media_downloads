@@ -73,6 +73,15 @@ func safeName(s string) string {
 		r := []rune(s)
 		s = string(r[:120])
 	}
+	// 文件系统按字节限制文件名（ext4 上限 255），中文 / Emoji 一个字符占 3~4 字节，
+	// 只按字符数截断仍可能 ENAMETOOLONG；留出扩展名与临时后缀的余量。
+	for len(s) > 200 {
+		r := []rune(s)
+		if len(r) == 0 {
+			break
+		}
+		s = string(r[:len(r)-1])
+	}
 	return s
 }
 

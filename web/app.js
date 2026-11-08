@@ -37,6 +37,62 @@ function baseName(fn, title) {
   return s;
 }
 
+/* ---------------- 更新内容渲染（重要部分高亮） ----------------
+   内容来自 .release-notes（发布脚本写进 version.json / Release body）。约定：
+   - 每行一条，行首 feat: / fix: / 新增： 等前缀渲染成分类徽章
+   - **重点** 高亮、反引号是行内代码、v2.5.4 这类版本号单独强调
+   全部先做 HTML 转义，再在转义后的文本上替换，不会注入标签。          */
+function renderNotes(raw) {
+  const lines = String(raw || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  if (!lines.length) return '<p class="chg-empty">暂无更新内容</p>';
+  const TAGS = {
+    feat: ['新增', 't-feat'], fix: ['修复', 't-fix'], perf: ['优化', 't-perf'],
+    ui: ['界面', 't-perf'], refactor: ['重构', 't-info'], docs: ['文档', 't-info'],
+    chore: ['维护', 't-info'],
+    '新增': ['新增', 't-feat'], '修复': ['修复', 't-fix'], '优化': ['优化', 't-perf'],
+    '改进': ['优化', 't-perf'], '重要': ['重要', 't-fix'], '注意': ['注意', 't-fix'],
+    '提醒': ['提醒', 't-info']
+  };
+  return '<div class="chg-list">' + lines.map((line) => {
+    let s = esc(line.replace(/^[-*•]\s+/, ''));
+    let tag = '';
+    const m = s.match(/^([A-Za-z]+|[\u4e00-\u9fa5]{2,4})\s*[:：]\s*/);
+    if (m) {
+      const hit = TAGS[m[1].toLowerCase()] || TAGS[m[1]];
+      if (hit) {
+        tag = '<span class="chg-tag ' + hit[1] + '">' + hit[0] + '</span>';
+        s = s.slice(m[0].length);
+      }
+    }
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<mark class="hl">$1</mark>');
+    s = s.replace(/`([^`]+)`/g, '<code class="hl-code">$1</code>');
+    s = s.replace(/\bv\d+\.\d+\.\d+\b/g, '<b class="hl-ver">$&</b>');
+    return '<div class="chg-line">' + tag + '<span class="chg-text">' + s + '</span></div>';
+  }).join('') + '</div>';
+}
+
+// 检查失败时不要把代理域名 / 一长串 URL 甩给用户
+function cleanUpdError(msg) {
+  let s = String(msg || '');
+  s = s.replace(/https?:\/\/[^\s，,；;)]+/g, '更新源');
+  s = s.replace(/\bgh-proxy\.com\b/gi, '代理').replace(/\bGitHub\b/gi, '更新源');
+  return s.replace(/\s{2,}/g, ' ').trim();
+}
+
+// 语义化版本比较：a 比 b 新才返回 true
+function isNewerVer(a, b) {
+  const p = (v) => String(v || '').replace(/^v/i, '').split(/[.\-+]/).map((n) => parseInt(n, 10) || 0);
+  const pa = p(a), pb = p(b);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+  }
+  return false;
+}
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 隐私模式 */ } }
+function ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+function ssSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+
 /* ---------------- 图标（1.8 描边，24 网格） ---------------- */
 const ICO = {
   play: '<path d="M8.5 5.6l9.6 6.4-9.6 6.4z" fill="currentColor" stroke="none"/>',
@@ -865,6 +921,10 @@ $('#btnCopyKey').addEventListener('click', () => {
 state.sys = null;
 state.update = null;
 
+const UPD_SKIP_KEY = 'ms-upd-skip-version';   // 永久跳过某个版本（localStorage）
+const UPD_DISMISS_PREFIX = 'ms-upd-dismiss-'; // 本次会话点过「取消更新」
+let updPrompted = null;                       // 本次会话已经弹过的版本
+
 async function loadSystemInfo() {
   try {
     const d = await api('/api/system/info');
@@ -894,15 +954,11 @@ function paintUpdate(st) {
   if (!status) return;
   if (st.current && $('#curVer')) $('#curVer').textContent = 'v' + st.current;
   $('#latestVer').textContent = st.latest ? 'v' + st.latest : '—';
-  $('#updSource').textContent = st.source === 'gh-proxy' ? 'gh-proxy 代理'
-    : st.source === 'direct' ? 'GitHub 直连' : '—';
 
   if (st.error) {
-    status.textContent = '检查失败：' + st.error;
+    status.textContent = '检查失败：' + cleanUpdError(st.error);
     badge.hidden = true; pill.hidden = true; apply.disabled = true;
-    return;
-  }
-  if (st.has_update) {
+  } else if (st.has_update) {
     status.textContent = st.can_auto
       ? '发现新版本 v' + st.latest + '，可以一键更新'
       : '发现新版本 v' + st.latest + '，但当前架构没有可用的自动更新包';
@@ -913,10 +969,77 @@ function paintUpdate(st) {
     status.textContent = '已是最新版本 · ' + (st.platform || '') + (auto ? ' · 自动更新已开启' : '');
     badge.hidden = true; pill.hidden = true; apply.disabled = true;
   }
+
+  // 更新内容默认展开，重点部分由 renderNotes 高亮
   const notes = (st.notes || '').trim();
   const wrap = $('#updNotesWrap');
-  if (wrap) wrap.hidden = !notes;
-  if (notes && $('#updNotes')) $('#updNotes').textContent = notes;
+  if (wrap) { wrap.hidden = !notes; if (notes) wrap.open = true; }
+  if (notes && $('#updNotes')) $('#updNotes').innerHTML = renderNotes(notes);
+
+  maybePromptUpdate(st);
+}
+
+/* ---------------- 首页新版本弹窗 ----------------
+   只在首页提醒；「不再更新此版本」按版本号记到 localStorage，
+   出现更高的版本时仍然会弹；「取消更新」只在本会话内不再弹。 */
+function shouldPromptUpdate(st) {
+  if (!st || !st.has_update || st.error || !st.latest) return false;
+  if (state.view !== 'home') return false;
+  if (updPrompted === st.latest) return false;
+  if (ssGet(UPD_DISMISS_PREFIX + st.latest)) return false;
+  const skip = lsGet(UPD_SKIP_KEY);
+  // 跳过的是这个版本（或更新的版本）就不再提醒；来了更高版本照常弹窗
+  if (skip && !isNewerVer(st.latest, skip)) return false;
+  return true;
+}
+function maybePromptUpdate(st) {
+  if (shouldPromptUpdate(st)) showUpdateDialog(st);
+}
+
+function showUpdateDialog(st) {
+  updPrompted = st.latest;
+  const from = st.current || (state.sys && state.sys.version) || '';
+  const canAuto = !!st.can_auto;
+  const date = st.released_at ? String(st.released_at).slice(0, 10) : '';
+  const sheet = openSheet(
+    '<div class="upd-dialog">' +
+      '<div class="upd-head">' +
+        '<span class="upd-kicker"><i></i>发现新版本</span>' +
+        '<div class="upd-ver">' +
+          (from ? '<span class="from">v' + esc(from) + '</span><span class="arrow">→</span>' : '') +
+          '<strong>v' + esc(st.latest) + '</strong>' +
+        '</div>' +
+        (date ? '<p class="upd-date">发布于 ' + esc(date) + '</p>' : '') +
+      '</div>' +
+      '<div class="upd-sec-title">更新内容</div>' +
+      '<div class="chg-box">' + renderNotes(st.notes) + '</div>' +
+      (canAuto ? '' : '<p class="upd-warn">当前架构暂无自动更新包，请前往 Releases 手动下载。</p>') +
+      '<div class="upd-dialog-actions">' +
+        '<button class="ghost upd-skip" data-x="skip">不再更新此版本</button>' +
+        '<span class="spacer"></span>' +
+        '<button class="ghost" data-x="cancel">取消更新</button>' +
+        '<button class="primary" data-x="ok"' + (canAuto ? '' : ' disabled') + '>确认更新</button>' +
+      '</div>' +
+      '<p class="upd-skip-note">仅跳过 v' + esc(st.latest) + '，下一个新版本仍会提醒你更新。</p>' +
+    '</div>'
+  );
+  sheet.classList.add('upd-sheet');
+  sheet.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-x]');
+    if (!b) return;
+    const x = b.dataset.x;
+    if (x === 'skip') {
+      lsSet(UPD_SKIP_KEY, st.latest);
+      closeSheet();
+      toast('已跳过 v' + st.latest + '，下个版本会再提醒', 'ok');
+    } else if (x === 'cancel') {
+      ssSet(UPD_DISMISS_PREFIX + st.latest, '1');
+      closeSheet();
+    } else if (x === 'ok') {
+      closeSheet();
+      runUpdate();
+    }
+  });
 }
 
 async function checkUpdate(force) {
@@ -927,10 +1050,10 @@ async function checkUpdate(force) {
   try {
     const st = await api('/api/system/update' + (force ? '?force=1' : ''));
     paintUpdate(st);
-    if (force) toast(st.error ? ('检查失败：' + st.error) : (st.has_update ? ('发现新版本 v' + st.latest) : '已是最新版本'), st.error ? 'err' : 'ok');
+    if (force) toast(st.error ? ('检查失败：' + cleanUpdError(st.error)) : (st.has_update ? ('发现新版本 v' + st.latest) : '已是最新版本'), st.error ? 'err' : 'ok');
   } catch (e) {
-    toast('检查更新失败：' + e.message, 'err');
-    if ($('#updStatus')) $('#updStatus').textContent = '检查失败：' + e.message;
+    toast('检查更新失败：' + cleanUpdError(e.message), 'err');
+    if ($('#updStatus')) $('#updStatus').textContent = '检查失败：' + cleanUpdError(e.message);
   } finally {
     btn.disabled = false; btn.textContent = label;
   }
@@ -941,9 +1064,9 @@ function askUpdate(st) {
     const sheet = openSheet(
       '<h3>更新到 v' + esc(st.latest) + '</h3>' +
       '<p class="hint" style="margin:0 0 12px">' +
-        '将从 GitHub Releases 下载 <span class="mono">' + esc(st.asset_name || '') + '</span>' +
+        '将下载更新包 <span class="mono">' + esc(st.asset_name || '') + '</span>' +
         (st.asset_size ? '（' + fmtBytes(st.asset_size) + '）' : '') +
-        '，校验 SHA256 后自动重启。下载期间下载任务会暂停，重启后自动恢复队列。' +
+        '，完成后自动校验并重启。更新期间下载任务会暂停，重启后自动恢复队列。' +
       '</p>' +
       '<div class="sheet-actions">' +
         '<button class="ghost" data-x="cancel">取消</button>' +
@@ -970,6 +1093,13 @@ async function applyUpdate() {
   const st = state.update;
   if (!st || !st.has_update) { toast('当前已是最新版本', 'err'); return; }
   if (!(await askUpdate(st))) return;
+  return runUpdate();
+}
+
+// 真正执行更新。首页弹窗里的「确认更新」直接走这里，不再二次确认。
+async function runUpdate() {
+  const st = state.update;
+  if (!st || !st.has_update) { toast('当前已是最新版本', 'err'); return; }
   const btn = $('#btnApplyUpdate');
   const label = btn.textContent;
   btn.disabled = true; btn.textContent = '下载中…';
@@ -1161,6 +1291,9 @@ function route() {
     : view === 'tasks' ? '任务 · Media Super'
     : '首页 · Media Super';
   window.scrollTo(0, 0);
+
+  // 从其它页回到首页时，用已缓存的检查结果补一次弹窗（不额外请求网络）
+  if (view === 'home' && state.update) setTimeout(() => maybePromptUpdate(state.update), 80);
 }
 window.addEventListener('hashchange', route);
 // hash 相同不会触发 hashchange（比如上次渲染失败停在首页），点导航时兜底重绘一次
@@ -1179,7 +1312,7 @@ window.addEventListener('pageshow', (e) => { if (e.persisted) route(); });
   document.addEventListener('touchmove', (e) => {
     if (e.touches.length !== 1) return;
     const t = e.target;
-    if (t && t.closest && t.closest('.sheet, .sheet-mask, .code pre, .notes-pre, textarea')) return;
+    if (t && t.closest && t.closest('.sheet, .sheet-mask, .code pre, .notes-pre, .chg-box, textarea')) return;
     const el = document.scrollingElement || document.documentElement;
     const dy = e.touches[0].clientY - startY;
     const atTop = el.scrollTop <= 0;

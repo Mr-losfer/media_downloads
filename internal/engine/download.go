@@ -27,11 +27,33 @@ type probeInfo struct {
 	FinalURL    string
 }
 
+// ensureDir 确保保存目录存在、且当前进程真的能写入。
+// os.MkdirAll 碰到「目录已存在但不可写」会直接返回 nil（NAS / fnOS 上很常见），
+// 必须实际创建一个临时文件探测一次；否则几百个分片下完才在 ffmpeg 阶段报
+// Permission denied，还会白走转码兜底和整任务重排。
 func ensureDir(dir string) error {
 	if dir == "" {
 		return errors.New("保存目录为空")
 	}
-	return os.MkdirAll(dir, 0o755)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return writeHint(dir, err)
+	}
+	f, err := os.CreateTemp(dir, ".ms-writecheck-*")
+	if err != nil {
+		return writeHint(dir, err)
+	}
+	name := f.Name()
+	f.Close()
+	os.Remove(name)
+	return nil
+}
+
+// writeHint 把底层文件系统错误翻译成用户能照着做的提示，并标为永久错误，
+// 避免「权限不够」这类环境问题时还把整个视频重下三遍。
+func writeHint(dir string, err error) error {
+	return permanentf(err,
+		"保存目录不可写：%s（%v）。请在 NAS / fnOS 里给应用授权该目录的写入权限，"+
+			"或到「设置 → 存储」换一个可写目录", dir, err)
 }
 
 // probe 用一次 2KB 的 Range 请求同时判断：是否 m3u8 / 是否支持分片 / 总大小 / 容器类型。

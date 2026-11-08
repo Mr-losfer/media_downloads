@@ -173,12 +173,25 @@ func (f *FileOps) Available() (string, bool) {
 
 // Convert 先尝试无损重封装，失败再按需转码。返回成品字节数。
 func (f *FileOps) Convert(ctx context.Context, in, out string, st Settings) (int64, error) {
-	if err := os.MkdirAll(dirOf(out), 0o755); err != nil {
+	dir := dirOf(out)
+	if err := ensureDir(dir); err != nil {
 		return 0, err
 	}
 	if !f.Ready() {
 		return 0, f.MissingError()
 	}
+
+	// 不直接写最终文件：NAS 上常见「目标文件属主不同 / 被占用」让 ffmpeg
+	// open(O_TRUNC) 报 Permission denied。写到同目录临时文件再原子替换，
+	// 只需目录可写即可覆盖，也不会留下半截 mp4。
+	tf, err := os.CreateTemp(dir, ".ms-convert-*.mp4")
+	if err != nil {
+		return 0, writeHint(dir, err)
+	}
+	tmp := tf.Name()
+	tf.Close()
+	os.Remove(tmp)
+	defer os.Remove(tmp)
 
 	cctx, cancel := context.WithTimeout(ctx, 45*time.Minute)
 	defer cancel()
@@ -191,20 +204,27 @@ func (f *FileOps) Convert(ctx context.Context, in, out string, st Settings) (int
 		"-max_muxing_queue_size", "512",
 		"-movflags", "+faststart",
 		"-f", "mp4",
-		out,
+		tmp,
 	}
 	remuxErr := f.run(cctx, args)
 	if remuxErr == nil {
-		if sz := fileSize(out); sz > 0 {
+		if sz := fileSize(tmp); sz > 0 {
+			if err := commitOutput(tmp, out); err != nil {
+				return 0, err
+			}
 			return sz, nil
 		}
 		remuxErr = fmt.Errorf("ffmpeg 没有输出文件")
 	}
-	os.Remove(out)
+	os.Remove(tmp)
 
 	// 可执行文件在运行中被删掉、或权限变了：重试同样没用，直接给永久错误
 	if errors.Is(remuxErr, exec.ErrNotFound) {
 		return 0, f.MissingError()
+	}
+	// 目录权限 / 只读文件系统 / 磁盘满：再转码、再重下都是白费
+	if isFSPermanent(remuxErr) {
+		return 0, fsError(remuxErr, out)
 	}
 
 	if !st.AllowTranscode {
@@ -225,20 +245,79 @@ func (f *FileOps) Convert(ctx context.Context, in, out string, st Settings) (int
 		"-c:a", "aac", "-b:a", "128k",
 		"-movflags", "+faststart",
 		"-f", "mp4",
-		out,
+		tmp,
 	}
 	if err := f.run(cctx, args); err != nil {
-		os.Remove(out)
+		os.Remove(tmp)
 		if errors.Is(err, exec.ErrNotFound) {
 			return 0, f.MissingError()
 		}
+		if isFSPermanent(err) {
+			return 0, fsError(err, out)
+		}
 		return 0, fmt.Errorf("转码也失败了: %w", err)
 	}
-	sz := fileSize(out)
+	sz := fileSize(tmp)
 	if sz == 0 {
 		return 0, fmt.Errorf("ffmpeg 输出为空")
 	}
+	if err := commitOutput(tmp, out); err != nil {
+		return 0, err
+	}
 	return sz, nil
+}
+
+// commitOutput 把临时成品原子替换到目标路径。
+// 只要目录可写，rename 就能覆盖已存在的只读文件；失败时给可操作的权限提示。
+func commitOutput(tmp, out string) error {
+	if err := os.Chmod(tmp, 0o644); err != nil {
+		return writeHint(dirOf(out), err)
+	}
+	if err := os.Rename(tmp, out); err == nil {
+		return nil
+	}
+	// 目标已存在且不能被 rename 覆盖时，先删再挪（部分文件系统 / Windows）
+	if _, statErr := os.Stat(out); statErr == nil {
+		if rmErr := os.Remove(out); rmErr == nil {
+			if err := os.Rename(tmp, out); err == nil {
+				return nil
+			}
+		}
+	}
+	return writeHint(dirOf(out), fmt.Errorf("无法把成品写入 %s", out))
+}
+
+// fsErrKeys 是重试也没用的文件系统错误，统一转成永久错误 + 可操作提示。
+var fsErrKeys = []string{
+	"Permission denied", "permission denied",
+	"Read-only file system", "No space left on device",
+	"Disk quota exceeded", "Operation not permitted",
+}
+
+func isFSPermanent(err error) bool {
+	if err == nil {
+		return false
+	}
+	if os.IsPermission(err) {
+		return true
+	}
+	s := err.Error()
+	for _, k := range fsErrKeys {
+		if strings.Contains(s, k) {
+			return true
+		}
+	}
+	return false
+}
+
+func fsError(err error, out string) error {
+	s := err.Error()
+	if strings.Contains(s, "No space left") || strings.Contains(s, "quota") {
+		return permanentf(err, "磁盘空间不足，无法写入 %s：%v", dirOf(out), err)
+	}
+	return permanentf(err,
+		"无法写入成品文件 %s（%v）。请检查保存目录权限：在 NAS / fnOS 里给应用授权该目录的写入权限，"+
+			"或到「设置 → 存储」换一个可写目录", out, err)
 }
 
 // Thumb 抽一帧做封面，用完即走，失败不影响主流程。

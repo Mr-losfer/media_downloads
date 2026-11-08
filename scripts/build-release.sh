@@ -41,7 +41,20 @@ fi
 
 COMMIT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
 BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-NOTES="${NOTES:-$(git log -1 --pretty=%s 2>/dev/null || echo "Media Super v${VERSION}")}"
+
+# 「更新内容」优先读仓库根目录的 .release-notes：它可以是多行、带 feat:/fix:/
+# **重点** 标记的文本，会原样进入 version.json 与 Release body，供前端弹窗高亮展示。
+# 没有该文件时退回最近一次 commit subject，保持老流程可用。
+if [ -z "${NOTES:-}" ]; then
+  if [ -f .release-notes ]; then
+    NOTES="$(sed -e 's/[[:space:]]*$//' .release-notes)"
+  else
+    NOTES="$(git log -1 --pretty=%s 2>/dev/null || echo "Media Super v${VERSION}")"
+  fi
+fi
+# 版本列表是 Markdown 表格，说明列只能用一行：取首行并去掉高亮标记与竖线
+NOTES_ROW="$(printf '%s' "$NOTES" | head -n 1 | sed -e 's/[`*]//g' -e 's/|/\//g' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+[ -n "$NOTES_ROW" ] || NOTES_ROW="Media Super v${VERSION}"
 
 TARGETS=(
   "linux/amd64/amd64/"
@@ -145,7 +158,7 @@ if [ ! -f "$LIST" ]; then
 | --- | --- | --- | --- | --- |
 EOF
 fi
-ROW="| [v${VERSION}](https://github.com/${REPO}/releases/tag/v${VERSION}) | ${BUILT_AT} | amd64 / arm64 / armv7 / armv6 / 386 | \`${IMAGE}:${VERSION}\` | ${NOTES//|/\\|} |"
+ROW="| [v${VERSION}](https://github.com/${REPO}/releases/tag/v${VERSION}) | ${BUILT_AT} | amd64 / arm64 / armv7 / armv6 / 386 | \`${IMAGE}:${VERSION}\` | ${NOTES_ROW} |"
 # 同版本重复构建时先删掉旧行，避免版本列表出现重复
 grep -v "releases/tag/v${VERSION})" "$LIST" > "${LIST}.2" && mv "${LIST}.2" "$LIST"
 # 插入到表头分隔线之后（保持新版本在最上面）

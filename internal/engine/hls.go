@@ -428,6 +428,11 @@ func (d *dlCtx) downloadHLS(ctx context.Context, rawurl string) (string, int64, 
 	if !d.m.ff.Ready() {
 		return "", 0, d.m.ff.MissingError()
 	}
+	// 目录权限也要在最前面探测：NAS 上「目录存在但应用无写权限」很常见，
+	// 若等封装阶段才报 Permission denied，整部片子的分片就白下了。
+	if err := ensureDir(d.task.SaveDir); err != nil {
+		return "", 0, err
+	}
 	pl, base, err := d.fetchPlaylist(ctx, rawurl)
 	if err != nil {
 		return "", 0, err

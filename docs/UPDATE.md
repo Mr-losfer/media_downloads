@@ -20,13 +20,14 @@ Media Super 有两种升级方式，互不冲突：
 3. `https://gh-proxy.com/https://api.github.com/repos/losfer778/media_downloads/releases/latest`
 4. `https://api.github.com/repos/losfer778/media_downloads/releases/latest`
 
-`version.json` 由打包脚本生成，内容是当前版本号、更新说明、各架构二进制的下载地址与 SHA256：
+`version.json` 由打包脚本生成，内容是当前版本号、**更新内容**、各架构二进制的下载地址与 SHA256。
+`notes` 支持多行：行首 `feat:` / `fix:` / `ui:` 会渲染成分类徽章，`**重点**` 会高亮：
 
 ```json
 {
   "version": "2.1.0",
   "released_at": "2026-11-08T14:05:54Z",
-  "notes": "更新说明",
+  "notes": "feat: 新增功能\nfix: 修复 **重要** 问题",
   "assets": {
     "linux-amd64": {
       "name": "mediasuper-linux-amd64",
@@ -43,6 +44,17 @@ Media Super 有两种升级方式，互不冲突：
 
 > 为什么不用纯 GitHub API？国内访问 `api.github.com` 更容易被限流；`version.json` 走 raw 域名，
 > 配合 gh-proxy 更稳定，而且能让镜像仓库与二进制版本严格对应。
+
+### 首页新版本弹窗
+
+进入首页检测到新版本会自动弹窗，展示 `v当前 → v最新` 与**更新内容**（分类徽章 + 重点高亮）：
+
+- 右侧「取消更新」：本次会话不再提醒（`sessionStorage`）；
+- 右侧「确认更新」：直接执行一键更新；
+- 左侧「不再更新此版本」：把版本号记到浏览器 `localStorage`，**只对当前版本生效**，
+  出现更高的版本仍会弹窗。
+
+跳过记录按浏览器保存，每台设备各自独立，不影响其它客户端，也不影响设置页的手动检查 / 更新。
 
 ---
 
@@ -142,7 +154,10 @@ curl -s -X POST http://127.0.0.1:9099/api/system/update \
 
 ## 六、发布新版本（维护者）
 
-正常流程是**推 tag，让 CI 打包**：
+正常流程是**推 tag，让 CI 打包**。发布前把本次「更新内容」写进仓库根目录的
+`.release-notes`（每行一条，可用 `feat:` / `fix:` / `ui:` 前缀，`**重点**` 会被前端高亮）。
+`build-release.sh` 把它写进 `version.json` 与 Release body，`docs/RELEASES.md` 表格只取首行做摘要，
+`build-fpk.sh` 的 manifest 也只取首行；没有该文件时退回最近一次 commit subject。
 
 ```bash
 # 1. 改版本号

@@ -500,12 +500,10 @@ event: task.deleted {"id":"…"}
           系统更新
           <span class="badge-ver" id="updBadge" hidden>有新版本</span>
         </h3>
-        <p class="hint">元数据优先走 <code>gh-proxy.com</code> 加速，代理异常时自动直连 GitHub。</p>
         <div class="ver-grid">
           <div class="ver-item"><span class="m-k">当前版本</span><span class="mono" id="curVer">—</span></div>
           <div class="ver-item"><span class="m-k">最新版本</span><span class="mono" id="latestVer">—</span></div>
           <div class="ver-item"><span class="m-k">设备架构</span><span class="mono" id="sysPlatform">—</span></div>
-          <div class="ver-item"><span class="m-k">更新源</span><span class="mono" id="updSource">—</span></div>
         </div>
         <label class="check"><input type="checkbox" id="sAutoUpdate"><span>自动更新（每 2 小时检查一次，仅在无下载任务时自动升级）</span></label>
         <div class="upd-actions">
@@ -515,8 +513,8 @@ event: task.deleted {"id":"…"}
           <span class="hint" id="updStatus" style="margin:0">登录后会自动检查一次</span>
         </div>
         <details class="more" id="updNotesWrap" hidden>
-          <summary>更新说明</summary>
-          <pre id="updNotes" class="notes-pre"></pre>
+          <summary>更新内容</summary>
+          <div id="updNotes" class="chg-box"></div>
         </details>
         <p class="hint" style="margin-top:10px">
           更新包会先下载到数据目录并校验 SHA256，再热切换到新版本；容器重启后依然生效。
