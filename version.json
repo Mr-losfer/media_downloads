@@ -1,15 +1,19 @@
 {
   "version": "2.5.4",
-  "released_at": "2026-11-08T19:04:25Z",
+  "released_at": "2026-11-08T19:09:03Z",
   "notes": "重要：**进入首页自动弹出新版本提示**，可直接更新或跳过当前版本\nfeat: 首页新增版本更新弹窗，展示新版本号与本次更新内容\nfeat: 新增「不再更新此版本」，仅跳过当前版本，下一个新版本仍会提醒\nfeat: 更新内容按新增 / 修复 / 优化分类展示，重点内容高亮标记\nfix: 设置页「更新」不再展示代理信息，「更新说明」改为「更新内容」\nfix: 修复 NAS 保存目录权限不足时 m3u8 封装报 **Permission denied** 并反复重试\nui: 弹窗左侧单独放「不再更新此版本」，右侧为「取消更新 / 确认更新」",
   "repo": "https://github.com/losfer778/media_downloads",
   "image": "ghcr.io/losfer778/media-super:2.5.4",
   "assets": {
-    "linux-amd64": { "name": "mediasuper-linux-amd64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper-linux-amd64", "sha256": "e55d9a15aaa0bbbfed8a6c4d57375812c16ca0c7edd79490b8b5637ed787072b", "size": 7422136 },
-    "linux-arm64": { "name": "mediasuper-linux-arm64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper-linux-arm64", "sha256": "6445b729e932ec67693bd85dc8ee03b6a3fee7a7dc4f3e908e9c250c1bc22ffc", "size": 7012536 },
-    "linux-armv7": { "name": "mediasuper-linux-armv7", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper-linux-armv7", "sha256": "5b9256ec668940f76b7103e2c3829cc296f2558d754f8ca4099ff8b7c4f142a4", "size": 7274680 },
-    "linux-armv6": { "name": "mediasuper-linux-armv6", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper-linux-armv6", "sha256": "b6df4ec46230740eafbde9a477e7d2b4902746f708ada411a174ccce130f326d", "size": 7274680 },
-    "linux-386": { "name": "mediasuper-linux-386", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper-linux-386", "sha256": "6ab79df2808645b67ab21fc9c092eb9cc3e028bea705cecf7d731d4436dbbe02", "size": 7159992 }
+    "linux-amd64": { "name": "mediasuper-linux-amd64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper-linux-amd64", "sha256": "3bb5c96c1a935795b9b4fd8267e1d00b4df8f7a3cd030f8a1c2d6dc63185a42d", "size": 7430328 },
+    "linux-arm64": { "name": "mediasuper-linux-arm64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper-linux-arm64", "sha256": "61e7ea9bb4efcff61c8f4d988609343ae5ac32b9a8fd0f9bca52ba58a4bfcd48", "size": 7012536 },
+    "linux-armv7": { "name": "mediasuper-linux-armv7", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper-linux-armv7", "sha256": "6506a04f7ccc6ae8092a0051582e0419291def0ad986ed34ca15acf00e82b2ec", "size": 7274680 },
+    "linux-armv6": { "name": "mediasuper-linux-armv6", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper-linux-armv6", "sha256": "f79ce86500275c636ff8bc64bd3bb1ec2b9d00a6e0d52bf0b10721a4ad7df99c", "size": 7274680 },
+    "linux-386": { "name": "mediasuper-linux-386", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper-linux-386", "sha256": "246429714bd14668f498766fcc51597968c7c090441f00a449a223dfac031fdd", "size": 7164088 }
+  },
+  "fpk": {
+    "mediasuper_2.5.4_fnos-arm.fpk": { "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper_2.5.4_fnos-arm.fpk", "sha256": "c77cb014981184b4c3cc9919abe695dd8c43e0173488ae1df669df7ac1c2ede1", "size": 69221402 },
+    "mediasuper_2.5.4_fnos-x86.fpk": { "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/mediasuper_2.5.4_fnos-x86.fpk", "sha256": "3ce16b1bfa311958c51b650e4cf4ba21083d3dacfe1472ff53b3930c51147926", "size": 75199700 }
   },
   "checksums": "https://github.com/losfer778/media_downloads/releases/download/v2.5.4/SHA256SUMS"
 }
