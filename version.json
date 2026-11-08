@@ -1,19 +1,19 @@
 {
-  "version": "2.5.0",
-  "released_at": "2026-11-08T16:00:44Z",
-  "notes": "feat: 拆成四页导航，首页只放欢迎语与下载卡片",
+  "version": "2.5.1",
+  "released_at": "2026-11-08T16:18:56Z",
+  "notes": "fix(web): 修复点击「任务」停在首页",
   "repo": "https://github.com/losfer778/media_downloads",
-  "image": "ghcr.io/losfer778/media-super:2.5.0",
+  "image": "ghcr.io/losfer778/media-super:2.5.1",
   "assets": {
-    "linux-amd64": { "name": "mediasuper-linux-amd64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.0/mediasuper-linux-amd64", "sha256": "1fb161618492c3c830bee6dce9f454cb5754812424444b21f946da9ccc3f2d6d", "size": 7372984 },
-    "linux-arm64": { "name": "mediasuper-linux-arm64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.0/mediasuper-linux-arm64", "sha256": "77e0e7d6a90b6a926ec875d6e6e46ebb757b6df4641dbf75ac0e84fdbfa7d497", "size": 6947000 },
-    "linux-armv7": { "name": "mediasuper-linux-armv7", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.0/mediasuper-linux-armv7", "sha256": "977e13c19fd87c1b9e00a94a52befe167fe053e862598c9d6dd46abe9b956c84", "size": 7209144 },
-    "linux-armv6": { "name": "mediasuper-linux-armv6", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.0/mediasuper-linux-armv6", "sha256": "69b931d87ee77e3e946485acd249ab85c9c7e8ede1518286dc16eee823b24ced", "size": 7274680 },
-    "linux-386": { "name": "mediasuper-linux-386", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.0/mediasuper-linux-386", "sha256": "0d6bab4962a515e8b97dfce5760ebf13e20d42d2d3048fefa38716d406adda88", "size": 7114936 }
+    "linux-amd64": { "name": "mediasuper-linux-amd64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.1/mediasuper-linux-amd64", "sha256": "43d8f7750280772d40ff3b0706b643bb10b4be54693aaec6cb6404818afba3e2", "size": 7377080 },
+    "linux-arm64": { "name": "mediasuper-linux-arm64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.1/mediasuper-linux-arm64", "sha256": "b97045775b92882c9094833bdb0fa28a7281464ee7874457d4f89946ced361a1", "size": 6947000 },
+    "linux-armv7": { "name": "mediasuper-linux-armv7", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.1/mediasuper-linux-armv7", "sha256": "99ace1ef8e4d3d840ebee2dae45b5f5dca0d7dcc90df57b5fcc4db3a33a9b8ed", "size": 7209144 },
+    "linux-armv6": { "name": "mediasuper-linux-armv6", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.1/mediasuper-linux-armv6", "sha256": "1b832ef25d6180d53ec1b038e9ba7faf1eb14f0a5e1f424551b3b9451b450466", "size": 7274680 },
+    "linux-386": { "name": "mediasuper-linux-386", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.1/mediasuper-linux-386", "sha256": "1572289e74e3546855b14e9aff257d355791220d4cdff9f767e039417537c369", "size": 7114936 }
   },
   "fpk": {
-    "mediasuper_2.5.0_fnos-arm.fpk": { "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.0/mediasuper_2.5.0_fnos-arm.fpk", "sha256": "dd07b945742ee413f5b358a1492995b2236bb325a505614f75be07b407b93b13", "size": 2940777 },
-    "mediasuper_2.5.0_fnos-x86.fpk": { "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.0/mediasuper_2.5.0_fnos-x86.fpk", "sha256": "88e6225e85bb8257e94912ad3c1e82645c4e3dd7e7a0652b600c5883746cf220", "size": 3193452 }
+    "mediasuper_2.5.1_fnos-arm.fpk": { "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.1/mediasuper_2.5.1_fnos-arm.fpk", "sha256": "56f72dca245888d6c6c3c02eed9b31642cd8368e14e5dfdf6150b02ac5ec9595", "size": 2941358 },
+    "mediasuper_2.5.1_fnos-x86.fpk": { "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.1/mediasuper_2.5.1_fnos-x86.fpk", "sha256": "65b3ca2d49176faa25f5838e2c84ef93864406df49e120133e162071a3069205", "size": 3194606 }
   },
-  "checksums": "https://github.com/losfer778/media_downloads/releases/download/v2.5.0/SHA256SUMS"
+  "checksums": "https://github.com/losfer778/media_downloads/releases/download/v2.5.1/SHA256SUMS"
 }
