@@ -4,6 +4,7 @@
 
 | 版本 | 构建时间 | 架构 | 镜像 | 说明 |
 | --- | --- | --- | --- | --- |
+| [v2.2.2](https://github.com/losfer778/media_downloads/releases/tag/v2.2.2) | 2026-11-08T14:23:31Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/losfer778/media-super:2.2.2` | fix(fpk): manifest 更新说明里的 # 和 = 会被 fnpack 截断 |
 | [v2.2.1](https://github.com/losfer778/media_downloads/releases/tag/v2.2.1) | 2026-11-08T14:20:28Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/losfer778/media-super:2.2.1` | fix: Dockerfile.bin 可复用 dist 产物；进入后台总是检查一次更新 |
 | [v2.2.0](https://github.com/losfer778/media_downloads/releases/tag/v2.2.0) | 2026-11-08T14:16:41Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/losfer778/media-super:2.2.0` | docs: 补全部署、更新、fnOS 与架构文档；版本 2.2.0 |
 | [v2.1.0](https://github.com/losfer778/media_downloads/releases/tag/v2.1.0) | 2026-11-08T14:05:54Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/losfer778/media-super:2.1.0` | ci(release): 多架构打包、GitHub Release、ghcr 镜像与 fnOS fpk 自动化 |
