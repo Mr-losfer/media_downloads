@@ -1,0 +1,10 @@
+vidfetch
+vidfetch-*
+*.log
+data/
+_test/
+_toolchain/
+.DS_Store
+downloads/
+.env
+*.env

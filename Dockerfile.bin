@@ -1,0 +1,29 @@
+# 用预先编译好的二进制（在别处交叉编译后放进构建上下文）
+# 适合 NAS 上没有 Go 环境 / 内存太小跑不动编译 的场景：
+#   CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o vidfetch .
+#   docker build -f Dockerfile.bin -t vidfetch:1.0.0 .
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates tzdata ffmpeg \
+    && addgroup -g 1000 -S app \
+    && adduser -u 1000 -S -G app -h /home/app app \
+    && mkdir -p /data /downloads /home/app \
+    && chown -R app:app /data /downloads /home/app
+
+ENV TZ=Asia/Shanghai \
+    VF_ADDR=:8080 \
+    VF_DATA_DIR=/data \
+    VF_FFMPEG=/usr/bin/ffmpeg
+
+COPY vidfetch /usr/local/bin/vidfetch
+RUN chmod 0755 /usr/local/bin/vidfetch
+
+USER 1000:1000
+WORKDIR /home/app
+VOLUME ["/data"]
+EXPOSE 8080
+
+HEALTHCHECK --interval=60s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:8080/api/health >/dev/null || exit 1
+
+ENTRYPOINT ["/usr/local/bin/vidfetch"]

@@ -1,0 +1,9 @@
+_test/
+_toolchain/
+vidfetch
+data/
+*.log
+.git/
+.gitignore
+README.md
+Dockerfile.bin

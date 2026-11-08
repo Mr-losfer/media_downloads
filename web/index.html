@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0b0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VidFetch">
+<title>VidFetch · 视频下载</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ================= 登录 ================= -->
+<div id="loginView" class="login-shell">
+  <form class="login-card" id="loginForm">
+    <h1>
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--sig)">
+        <rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="M10 9.2l5.2 2.8L10 14.8z" fill="currentColor" stroke="none"/>
+      </svg>
+      VidFetch
+    </h1>
+    <p class="sub">视频下载管理器 · 请输入后台密码</p>
+    <label class="lbl" for="loginPass">后台密码</label>
+    <input type="password" id="loginPass" autocomplete="current-password" required>
+    <div style="height:12px"></div>
+    <button class="primary" style="width:100%" type="submit" id="loginBtn">登录</button>
+    <p id="loginErr" role="alert" style="color:var(--err);margin:12px 0 0;font-size:12.5px;min-height:18px"></p>
+  </form>
+</div>
+
+<!-- ================= 主界面 ================= -->
+<div id="appView" class="hidden">
+  <header class="app-bar">
+    <div class="app-bar-in">
+      <div class="brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="M10 9.2l5.2 2.8L10 14.8z" fill="currentColor" stroke="none"/>
+        </svg>
+        VidFetch
+        <span class="ver" id="verLabel">v1</span>
+      </div>
+      <div class="spacer"></div>
+      <span class="status" id="pillDisk" title="保存目录剩余空间"><i></i><b>—</b></span>
+      <span class="status" id="pillLive" title="实时推送状态"><i></i><span id="liveText">连接中</span></span>
+      <button class="icon-btn" id="btnLogout" aria-label="退出登录" title="退出登录">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="tabbar" aria-label="主导航">
+    <a href="#/tasks" data-view="tasks" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>任务</span>
+    </a>
+    <a href="#/docs/api" data-view="docs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M8 8h7M8 12h5"/></svg>
+      <span>文档</span>
+    </a>
+    <a href="#/settings" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M20.5 14.2a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.06a1.6 1.6 0 0 0-1.05-1.47 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.06a1.6 1.6 0 0 0 1.47-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32h.08A1.6 1.6 0 0 0 9.94 3V3a2 2 0 1 1 4 0v.06a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77v.08a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.06a1.6 1.6 0 0 0-1.44 1.08z"/></svg>
+      <span>设置</span>
+    </a>
+  </nav>
+
+  <main>
+    <!-- ---------------- 任务 ---------------- -->
+    <section id="viewTasks">
+      <form class="ingest card" id="submitForm" autocomplete="off">
+        <div class="ingest-row">
+          <div class="grow">
+            <label class="lbl" for="inUrl">视频地址</label>
+            <input type="text" id="inUrl" placeholder="粘贴 m3u8 / mp4 / flv / ts 直链" required spellcheck="false" inputmode="url">
+          </div>
+          <button class="primary" type="submit" id="btnSubmit">下载</button>
+        </div>
+
+        <details class="more" id="moreOpts">
+          <summary>
+            <span class="chev">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+            </span>
+            更多选项 · 标题 / 目录 / 防盗链
+          </summary>
+          <div class="more-grid">
+            <div class="field">
+              <label class="lbl" for="inTitle">文件名（可选）</label>
+              <input type="text" id="inTitle" placeholder="留空则自动识别">
+            </div>
+            <div class="field">
+              <label class="lbl" for="inDir">保存目录</label>
+              <select id="inDir"></select>
+            </div>
+            <div class="field">
+              <label class="lbl" for="inReferer">Referer（防盗链）</label>
+              <input type="text" id="inReferer" placeholder="https://example.com/" inputmode="url">
+            </div>
+            <div class="field">
+              <label class="lbl" for="inCookie">Cookie</label>
+              <input type="text" id="inCookie" placeholder="key=value; key2=value2">
+            </div>
+          </div>
+        </details>
+      </form>
+
+      <div class="metrics">
+        <div><span class="m-k">进行中</span><span class="m-v accent" id="stActive">0</span></div>
+        <div><span class="m-k">排队</span><span class="m-v" id="stQueued">0</span></div>
+        <div><span class="m-k">已完成</span><span class="m-v" id="stDone">0</span></div>
+        <div><span class="m-k">累计体积</span><span class="m-v" id="stSize">0 B</span></div>
+      </div>
+
+      <div class="toolbar">
+        <div class="segmented" role="group" aria-label="按状态筛选">
+          <button type="button" data-filter="all" aria-pressed="true">全部<span class="n" id="tabAll">0</span></button>
+          <button type="button" data-filter="active" aria-pressed="false">进行中<span class="n" id="tabActive">0</span></button>
+          <button type="button" data-filter="completed" aria-pressed="false">已完成<span class="n" id="tabDone">0</span></button>
+          <button type="button" data-filter="failed" aria-pressed="false">失败<span class="n" id="tabFail">0</span></button>
+        </div>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
+          <label class="sr-only" for="search">搜索任务</label>
+          <input type="search" id="search" placeholder="搜索标题或链接">
+        </div>
+      </div>
+
+      <ul class="tasks" id="taskList"></ul>
+    </section>
+
+    <!-- ---------------- 文档 ---------------- -->
+    <section id="viewDocs" class="hidden">
+      <div class="toolbar">
+        <div class="segmented" role="group" aria-label="文档类型">
+          <button type="button" data-doc="api" aria-pressed="true">REST API</button>
+          <button type="button" data-doc="mcp" aria-pressed="false">MCP 服务</button>
+        </div>
+      </div>
+
+      <!-- ===== REST API ===== -->
+      <div id="docApi">
+        <div class="doc-head">
+          <h2>REST API</h2>
+          <p>所有接口都接受 <code>Authorization: Bearer &lt;API Key&gt;</code>；浏览器内也可用登录 Cookie。
+             播放类接口额外支持 <code>?token=&lt;API Key&gt;</code>，方便 <code>&lt;video&gt;</code> 与 EventSource 直接使用。</p>
+        </div>
+
+        <div class="doc-section">
+          <h3>连接信息</h3>
+          <dl class="kv">
+            <dt>Base URL</dt><dd><span class="mono" data-base>http://…</span></dd>
+            <dt>鉴权</dt><dd><span class="mono">Authorization: Bearer &lt;API Key&gt;</span></dd>
+            <dt>API Key</dt><dd>「设置」页可查看、复制</dd>
+            <dt>编码</dt><dd>请求与响应均为 <code>application/json; charset=utf-8</code></dd>
+          </dl>
+        </div>
+
+        <div class="doc-section">
+          <h3>提交下载</h3>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>curl -X POST <span data-base>/api/tasks</span> \
+  -H "Authorization: Bearer $VF_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/hls/index.m3u8",
+    "title": "我的视频",
+    "save_dir": "/downloads/hdd",
+    "headers": { "Referer": "https://example.com/" }
+  }'</pre></div>
+          <div class="note"><b>title</b> 不用写扩展名，服务端按探测到的容器自动补 <code>.mp4</code>；
+            <b>save_dir</b> 必须已在设置里配置；<b>headers</b> 可选，用于防盗链。</div>
+        </div>
+
+        <div class="doc-section">
+          <h3>查询与操作</h3>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre># 列表（status=queued|running|merging|completed|failed|canceled|active）
+curl "<span data-base>/api/tasks?status=active&amp;limit=50" -H "Authorization: Bearer $VF_KEY"
+
+# 单个任务
+curl "<span data-base>/api/tasks/&lt;id&gt;" -H "Authorization: Bearer $VF_KEY"
+
+# 改名
+curl -X PATCH "<span data-base>/api/tasks/&lt;id&gt;" \
+  -H "Authorization: Bearer $VF_KEY" -H "Content-Type: application/json" \
+  -d '{"title":"新名字"}'
+
+# 取消 / 重试
+curl -X POST "<span data-base>/api/tasks/&lt;id&gt;/cancel" -H "Authorization: Bearer $VF_KEY"
+curl -X POST "<span data-base>/api/tasks/&lt;id&gt;/retry"  -H "Authorization: Bearer $VF_KEY"
+
+# 删除（file=true 同时删文件）
+curl -X DELETE "<span data-base>/api/tasks/&lt;id&gt;?file=true" -H "Authorization: Bearer $VF_KEY"</pre></div>
+        </div>
+
+        <div class="doc-section">
+          <h3>在线播放</h3>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>&lt;video controls src="<span data-base>/api/tasks/&lt;id&gt;/stream?token=$VF_KEY"&gt;&lt;/video&gt;
+
+# 支持 HTTP Range（拖动进度条 / 断点续传）
+curl -H "Range: bytes=0-1023" "<span data-base>/api/tasks/&lt;id&gt;/stream?token=$VF_KEY" -o /tmp/head.bin
+curl "<span data-base>/api/tasks/&lt;id&gt;/download?token=$VF_KEY" -O -J</pre></div>
+        </div>
+
+        <div class="doc-section">
+          <h3>端点总览</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>方法</th><th>路径</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/health</td><td>健康检查（免鉴权）</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/login</td><td>密码登录，写入会话 Cookie</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/logout</td><td>退出登录</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/me</td><td>当前身份 + API Key</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/tasks</td><td>任务列表（status / q / limit / offset）</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/tasks</td><td>提交下载任务</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/tasks/&lt;id&gt;</td><td>单个任务详情</td></tr>
+                <tr><td><span class="m">PATCH</span></td><td class="mono">/api/tasks/&lt;id&gt;</td><td>重命名（同步改磁盘文件）</td></tr>
+                <tr><td><span class="m del">DELETE</span></td><td class="mono">/api/tasks/&lt;id&gt;</td><td>删除任务，<code>?file=true</code> 连文件</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/tasks/&lt;id&gt;/cancel</td><td>取消</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/tasks/&lt;id&gt;/retry</td><td>重新排队</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/tasks/&lt;id&gt;/stream</td><td>播放（支持 Range 206）</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/tasks/&lt;id&gt;/download</td><td>下载文件</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/tasks/&lt;id&gt;/thumb</td><td>缩略图 jpg</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/events</td><td>SSE 实时事件流</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/stats</td><td>统计 + 磁盘剩余空间</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/settings</td><td>读取设置</td></tr>
+                <tr><td><span class="m">PUT</span></td><td class="mono">/api/settings</td><td>修改设置（只传要改的字段）</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/browse</td><td>列目录（选保存路径）</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/mcp</td><td>MCP JSON-RPC 端点</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="doc-section">
+          <h3>实时事件（SSE）</h3>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>curl -N "<span data-base>/api/events?token=$VF_KEY"
+
+event: hello     {"version":"1.0.0"}
+event: snapshot  [ …任务数组… ]
+event: task      { …单个任务，变化即推（500ms 节流）… }
+event: stats     { …统计… }
+event: task.deleted {"id":"…"}
+: ping           每 20 秒心跳</pre></div>
+          <div class="note">也可以配置 Webhook：服务端在 <code>task.created / started / completed / failed / canceled</code> 时 POST JSON，
+            带 <code>X-VF-Event</code> 与 <code>X-VF-Signature: sha256=&lt;HMAC-SHA256(secret, body)&gt;</code>，失败重试 2 次。</div>
+        </div>
+
+        <div class="doc-section">
+          <h3>错误响应</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>状态码</th><th>含义</th><th>处理方式</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">400</td><td>参数不合法</td><td>看 <code>error</code> 字段，多为 URL 或目录不在允许列表</td></tr>
+                <tr><td class="mono">401</td><td>未授权</td><td>检查 API Key，或重新登录</td></tr>
+                <tr><td class="mono">404</td><td>任务 / 文件不存在</td><td>可能已被删除</td></tr>
+                <tr><td class="mono">409</td><td>文件尚未就绪</td><td>任务还没 completed，稍后再取</td></tr>
+                <tr><td class="mono">429</td><td>登录尝试过多</td><td>等 5 分钟再试</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MCP ===== -->
+      <div id="docMcp" class="hidden">
+        <div class="doc-head">
+          <h2>MCP 服务</h2>
+          <p>把 VidFetch 接到任何支持 Model Context Protocol 的 Agent 上，让模型自己提交下载、查进度、改名、删文件。
+             走 JSON-RPC 2.0 over HTTP，用同一个 API Key 鉴权。</p>
+        </div>
+
+        <div class="doc-section">
+          <h3>端点</h3>
+          <dl class="kv">
+            <dt>URL</dt><dd><span class="mono" data-base>/mcp</span></dd>
+            <dt>传输</dt><dd>Streamable HTTP（POST JSON-RPC 2.0）</dd>
+            <dt>协议版本</dt><dd><span class="mono">2025-06-18</span>（兼容 2025-03-26 / 2024-11-05）</dd>
+            <dt>鉴权</dt><dd><span class="mono">Authorization: Bearer &lt;API Key&gt;</span></dd>
+            <dt>方法</dt><dd><code>initialize</code> · <code>tools/list</code> · <code>tools/call</code> · <code>ping</code></dd>
+          </dl>
+        </div>
+
+        <div class="doc-section">
+          <h3>客户端配置</h3>
+          <p class="hint" style="margin:0 0 9px">支持 HTTP 直连的客户端（Cline / Cherry Studio / 自研 Agent）直接填 URL 和 Bearer 头：</p>
+          <div class="code"><button class="copy" data-copy aria-label="复制配置" title="复制"></button><pre>{
+  "mcpServers": {
+    "vidfetch": {
+      "type": "http",
+      "url": "<span data-base>/mcp</span>",
+      "headers": { "Authorization": "Bearer vf_xxxxxxxx" }
+    }
+  }
+}</pre></div>
+          <p class="hint" style="margin:12px 0 9px">只能 stdio 的客户端（如 Claude Desktop）用同一份二进制转发到远端：</p>
+          <div class="code"><button class="copy" data-copy aria-label="复制配置" title="复制"></button><pre>{
+  "mcpServers": {
+    "vidfetch": {
+      "command": "docker",
+      "args": ["exec", "-i", "vidfetch", "/usr/local/bin/vidfetch",
+               "-stdio", "-remote", "http://127.0.0.1:8080", "-key", "vf_xxxxxxxx"]
+    }
+  }
+}</pre></div>
+        </div>
+
+        <div class="doc-section">
+          <h3>工具（11 个）</h3>
+
+          <details class="tool">
+            <summary><span class="tname">submit_download</span><span class="tdesc">提交下载任务</span></summary>
+            <div class="tbody"><div class="table-wrap"><table>
+              <thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">url *</td><td>string</td><td>视频直链（m3u8 / mp4 / flv / ts）</td></tr>
+                <tr><td class="mono">title</td><td>string</td><td>文件名，不含扩展名</td></tr>
+                <tr><td class="mono">save_dir</td><td>string</td><td>保存目录，须在设置白名单内</td></tr>
+                <tr><td class="mono">headers</td><td>object</td><td>防盗链头，如 <code>{"Referer":"…"}</code></td></tr>
+              </tbody>
+            </table></div></div>
+          </details>
+
+          <details class="tool">
+            <summary><span class="tname">list_tasks</span><span class="tdesc">列出任务，可按状态 / 关键词过滤</span></summary>
+            <div class="tbody"><div class="table-wrap"><table>
+              <thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">status</td><td>string</td><td>queued / running / merging / completed / failed / canceled / active</td></tr>
+                <tr><td class="mono">query</td><td>string</td><td>标题或 URL 关键词</td></tr>
+                <tr><td class="mono">limit</td><td>integer</td><td>默认 50，最大 200</td></tr>
+                <tr><td class="mono">offset</td><td>integer</td><td>分页偏移</td></tr>
+              </tbody>
+            </table></div></div>
+          </details>
+
+          <details class="tool">
+            <summary><span class="tname">get_task</span><span class="tdesc">查询单个任务的进度与状态</span></summary>
+            <div class="tbody"><div class="table-wrap"><table>
+              <thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead>
+              <tbody><tr><td class="mono">task_id *</td><td>string</td><td>任务 ID</td></tr></tbody>
+            </table></div></div>
+          </details>
+
+          <details class="tool">
+            <summary><span class="tname">cancel_task</span><span class="tdesc">取消排队中或下载中的任务</span></summary>
+            <div class="tbody"><div class="table-wrap"><table>
+              <thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead>
+              <tbody><tr><td class="mono">task_id *</td><td>string</td><td>任务 ID</td></tr></tbody>
+            </table></div></div>
+          </details>
+
+          <details class="tool">
+            <summary><span class="tname">retry_task</span><span class="tdesc">重新下载失败或已取消的任务</span></summary>
+            <div class="tbody"><div class="table-wrap"><table>
+              <thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead>
+              <tbody><tr><td class="mono">task_id *</td><td>string</td><td>任务 ID</td></tr></tbody>
+            </table></div></div>
+          </details>
+
+          <details class="tool">
+            <summary><span class="tname">delete_task</span><span class="tdesc">删除任务记录，可选删除文件</span></summary>
+            <div class="tbody"><div class="table-wrap"><table>
+              <thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">task_id *</td><td>string</td><td>任务 ID</td></tr>
+                <tr><td class="mono">delete_file</td><td>boolean</td><td>默认 false；true 时连磁盘文件一起删</td></tr>
+              </tbody>
+            </table></div></div>
+          </details>
+
+          <details class="tool">
+            <summary><span class="tname">rename_task</span><span class="tdesc">重命名任务与磁盘文件</span></summary>
+            <div class="tbody"><div class="table-wrap"><table>
+              <thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">task_id *</td><td>string</td><td>任务 ID</td></tr>
+                <tr><td class="mono">new_name *</td><td>string</td><td>新名称，扩展名自动保留</td></tr>
+              </tbody>
+            </table></div></div>
+          </details>
+
+          <details class="tool">
+            <summary><span class="tname">get_download_link</span><span class="tdesc">取带 token 的播放 / 下载链接</span></summary>
+            <div class="tbody"><div class="table-wrap"><table>
+              <thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead>
+              <tbody><tr><td class="mono">task_id *</td><td>string</td><td>必须已完成的任务</td></tr></tbody>
+            </table></div></div>
+          </details>
+
+          <details class="tool">
+            <summary><span class="tname">get_settings</span><span class="tdesc">读取配置（密钥字段已隐藏）</span></summary>
+            <div class="tbody"><p class="hint" style="margin:0">无参数。</p></div>
+          </details>
+
+          <details class="tool">
+            <summary><span class="tname">update_settings</span><span class="tdesc">修改配置，只传要改的字段</span></summary>
+            <div class="tbody"><div class="table-wrap"><table>
+              <thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">max_tasks</td><td>integer</td><td>并发任务 1–8</td></tr>
+                <tr><td class="mono">seg_conns</td><td>integer</td><td>单任务连接 1–32</td></tr>
+                <tr><td class="mono">speed_limit_kb</td><td>integer</td><td>全局限速，0 不限</td></tr>
+                <tr><td class="mono">default_dir</td><td>string</td><td>默认保存目录</td></tr>
+                <tr><td class="mono">save_dirs</td><td>array</td><td><code>[{"path":"…","label":"…"}]</code></td></tr>
+                <tr><td class="mono">webhook_url</td><td>string</td><td>事件回调地址</td></tr>
+                <tr><td class="mono">webhook_secret</td><td>string</td><td>HMAC 签名密钥</td></tr>
+                <tr><td class="mono">auto_clean_days</td><td>integer</td><td>完成 N 天后自动删除，0 关闭</td></tr>
+                <tr><td class="mono">hls_quality</td><td>string</td><td>best / worst</td></tr>
+                <tr><td class="mono">allow_transcode</td><td>boolean</td><td>重封装失败时是否转码</td></tr>
+                <tr><td class="mono">thumbnails</td><td>boolean</td><td>是否生成缩略图</td></tr>
+              </tbody>
+            </table></div></div>
+          </details>
+
+          <details class="tool">
+            <summary><span class="tname">get_stats</span><span class="tdesc">任务计数、磁盘剩余、运行时长</span></summary>
+            <div class="tbody"><p class="hint" style="margin:0">无参数。</p></div>
+          </details>
+        </div>
+
+        <div class="doc-section">
+          <h3>原始调用示例</h3>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>curl -X POST <span data-base>/mcp</span> \
+  -H "Authorization: Bearer $VF_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "submit_download",
+      "arguments": { "url": "https://example.com/a.m3u8", "title": "测试" }
+    }
+  }'</pre></div>
+          <div class="note">返回的 <code>result.content[0].text</code> 是 JSON 字符串；工具内部出错时返回 <code>isError: true</code>，
+            只有协议层错误才用 <code>error.code</code>（-32700 解析失败 / -32601 方法不存在 / -32602 参数错误）。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------------- 设置 ---------------- -->
+    <section id="viewSettings" class="hidden">
+      <div class="panel">
+        <h3>下载性能</h3>
+        <p class="hint">低配设备建议：并发任务 2、分片连接 8。两者相乘即最大同时连接数。</p>
+        <div class="grid2">
+          <div class="field"><label class="lbl" for="sMaxTasks">同时下载任务数（1–8）</label><input type="number" id="sMaxTasks" min="1" max="8" inputmode="numeric"></div>
+          <div class="field"><label class="lbl" for="sSegConns">单任务并发连接（1–32）</label><input type="number" id="sSegConns" min="1" max="32" inputmode="numeric"></div>
+          <div class="field"><label class="lbl" for="sSpeed">全局限速 KB/s（0 不限）</label><input type="number" id="sSpeed" min="0" inputmode="numeric"></div>
+          <div class="field"><label class="lbl" for="sRetries">失败重试次数</label><input type="number" id="sRetries" min="0" max="10" inputmode="numeric"></div>
+          <div class="field">
+            <label class="lbl" for="sQuality">HLS 清晰度</label>
+            <select id="sQuality"><option value="best">最高画质</option><option value="worst">最低画质（省流量）</option></select>
+          </div>
+          <div class="field">
+            <label class="lbl" for="sPreset">转码预设（兜底）</label>
+            <select id="sPreset">
+              <option value="ultrafast">ultrafast</option><option value="superfast">superfast</option>
+              <option value="veryfast">veryfast</option><option value="faster">faster</option>
+              <option value="fast">fast</option><option value="medium">medium</option>
+            </select>
+          </div>
+          <div class="field full"><label class="lbl" for="sUA">User-Agent</label><input type="text" id="sUA"></div>
+          <div class="field"><label class="lbl" for="sProxy">HTTP / SOCKS 代理</label><input type="text" id="sProxy" placeholder="http://127.0.0.1:7890" inputmode="url"></div>
+          <div class="field"><label class="lbl" for="sFFmpeg">ffmpeg 路径</label><input type="text" id="sFFmpeg" placeholder="ffmpeg"></div>
+        </div>
+        <div style="margin-top:6px">
+          <label class="check"><input type="checkbox" id="sTranscode"><span>重封装失败时允许转码（CPU 占用会明显升高）</span></label>
+          <label class="check"><input type="checkbox" id="sThumbs"><span>生成视频缩略图</span></label>
+          <label class="check"><input type="checkbox" id="sKeepTemp"><span>保留临时分片（调试用）</span></label>
+          <label class="check"><input type="checkbox" id="sInsecure"><span>忽略 TLS 证书错误</span></label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>保存目录</h3>
+        <p class="hint">第一行是默认目录；容器内路径需在 docker-compose 里挂载好。</p>
+        <div id="dirRows"></div>
+        <button class="sm" type="button" id="btnAddDir">添加目录</button>
+      </div>
+
+      <div class="panel">
+        <h3>事件与清理</h3>
+        <div class="grid2">
+          <div class="field full"><label class="lbl" for="sWebhook">Webhook 地址</label><input type="text" id="sWebhook" placeholder="https://your-server/hook" inputmode="url"></div>
+          <div class="field"><label class="lbl" for="sHookSecret">签名密钥（HMAC-SHA256）</label><input type="text" id="sHookSecret" placeholder="可选"></div>
+          <div class="field"><label class="lbl" for="sClean">完成后 N 天自动删除（0 关闭）</label><input type="number" id="sClean" min="0" inputmode="numeric"></div>
+          <div class="field full"><label class="lbl" for="sPublic">对外访问地址</label><input type="text" id="sPublic" placeholder="http://192.168.1.123:9099" inputmode="url"></div>
+        </div>
+        <p class="hint" style="margin-top:10px">事件类型：<code>task.created</code> / <code>started</code> / <code>completed</code> / <code>failed</code> / <code>canceled</code>，
+          请求头带 <code>X-VF-Event</code> 与 <code>X-VF-Signature</code>。</p>
+      </div>
+
+      <div class="panel">
+        <h3>API 与 MCP</h3>
+        <div class="keybox">
+          <code id="apiKeyBox">—</code>
+          <button class="sm" type="button" id="btnCopyKey">复制</button>
+        </div>
+        <p class="hint" style="margin-top:10px">REST：<code>Authorization: Bearer &lt;API Key&gt;</code>　MCP 端点：<code>POST /mcp</code></p>
+      </div>
+
+      <div class="save-bar">
+        <button class="primary" id="btnSaveSettings">保存设置</button>
+        <button class="ghost" id="btnReloadSettings">重新读取</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="modalHost"></div>
+<div id="toasts" aria-live="polite" aria-atomic="false"></div>
+<script src="/app.js"></script>
+</body>
+</html>

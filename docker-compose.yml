@@ -1,0 +1,54 @@
+services:
+  vidfetch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vidfetch:1.1.0
+    container_name: vidfetch
+    restart: unless-stopped
+
+    ports:
+      - "9099:8080"
+
+    environment:
+      TZ: Asia/Shanghai
+      # 后台登录密码（首次启动写入数据库，之后改这里需要删 data 卷或进容器改）
+      VF_ADMIN_PASS: "${VF_ADMIN_PASS:-vidfetch123}"
+      # 保存目录：路径:标签，逗号分隔
+      VF_SAVE_DIRS: "/downloads/hdd:硬盘,/downloads/vol1:系统盘"
+      VF_DEFAULT_DIR: /downloads/hdd
+      # 低配默认：2 个任务 × 8 连接 = 最多 16 个并发连接
+      VF_MAX_TASKS: "2"
+      VF_SEG_CONNS: "8"
+      VF_SPEED_LIMIT_KB: "0"
+      VF_FFMPEG: /usr/bin/ffmpeg
+      VF_WEBHOOK_URL: ""
+
+    volumes:
+      - ./data:/data
+      - /vol00/HSH721414ALN6M0/视频下载:/downloads/hdd
+      - ./downloads:/downloads/vol1
+
+    # ---- 低配保护：这四项是关键 ----
+    mem_limit: 512m
+    memswap_limit: 768m
+    cpus: 1.0
+    pids_limit: 256
+
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 8192
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/health"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

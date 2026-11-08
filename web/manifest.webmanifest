@@ -1,0 +1,14 @@
+{
+  "name": "VidFetch · 视频下载",
+  "short_name": "VidFetch",
+  "description": "轻量视频下载管理器：m3u8 / mp4 / flv / ts 直链下载",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0b0d",
+  "theme_color": "#0a0b0d",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
