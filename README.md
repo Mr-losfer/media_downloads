@@ -3,6 +3,10 @@
 > 为低配 NAS 打造的视频下载器：**单 Go 二进制、常驻内存约 15MB、m3u8 多线程拉流 + 无损转封装成 mp4**。
 > 同时提供 **REST API** 与 **MCP（Model Context Protocol）** 两种接入方式，自带 Web 管理页。
 
+```
+https://github.com/losfer778/media_downloads
+```
+
 ## 为什么是它
 
 - **轻**：`CGO_ENABLED=0` 静态编译，成品 6.9MB；无 Node、无 Python、无数据库服务。
@@ -39,17 +43,21 @@
 ## 快速开始
 
 ```bash
-# 1. 准备目录（按需改）
-mkdir -p /vol1/1000/Docker/vidfetch/{data,downloads}
+# 1. 拉代码
+git clone https://github.com/losfer778/media_downloads.git && cd media_downloads
 
-# 2. 起服务
-cd /vol1/1000/Docker/vidfetch
+# 2. 准备目录与密码
+mkdir -p data downloads
 echo 'VF_ADMIN_PASS=你的后台密码' > .env && chmod 600 .env
+
+# 3. 起服务（首次构建镜像，J1800 上约 2~3 分钟）
 docker compose up -d --build
 
-# 3. 打开
+# 4. 打开
 #   http://<NAS-IP>:9099
 ```
+
+**升级**：`git pull && docker compose up -d --build`（`data/` 里的任务记录和 API Key 会保留）。
 
 首次启动日志里会打印 **API Key**，后台「设置 → API 与 MCP」也能看到。
 
