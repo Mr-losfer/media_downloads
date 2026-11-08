@@ -53,9 +53,8 @@ TARGETS=(
 
 echo "==> 构建 Media Super v${VERSION} (${COMMIT_SHA})"
 mkdir -p dist
-rm -f dist/mediasuper-* dist/SHA256SUMS dist/*.tar.gz
-
 if [ "$SKIP_BUILD" -eq 0 ]; then
+  rm -f dist/mediasuper-* dist/SHA256SUMS dist/*.tar.gz
   for t in "${TARGETS[@]}"; do
     IFS='/' read -r goos goarch label goarm <<<"$t"
     out="dist/${APP}-${goos}-${label}"
@@ -147,6 +146,8 @@ if [ ! -f "$LIST" ]; then
 EOF
 fi
 ROW="| [v${VERSION}](https://github.com/${REPO}/releases/tag/v${VERSION}) | ${BUILT_AT} | amd64 / arm64 / armv7 / armv6 / 386 | \`${IMAGE}:${VERSION}\` | ${NOTES//|/\\|} |"
+# 同版本重复构建时先删掉旧行，避免版本列表出现重复
+grep -v "releases/tag/v${VERSION})" "$LIST" > "${LIST}.2" && mv "${LIST}.2" "$LIST"
 # 插入到表头分隔线之后（保持新版本在最上面）
 awk -v row="$ROW" '
   { print }

@@ -74,6 +74,16 @@ func (s *Server) handleApplyUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	binPath, err := s.up.Stage(ctx, st, nil)
+	if err != nil && strings.Contains(err.Error(), "校验失败") {
+		// version.json 与 Release 附件偶尔会不同步（重复发布覆盖产物），
+		// 这时用 Releases API 里的 digest 再试一次。
+		log.Printf("更新包摘要不一致，改用 Release API 校验重试")
+		if alt := s.up.CheckAPIOnly(ctx); alt.SHA256 != "" && alt.SHA256 != st.SHA256 {
+			if p2, err2 := s.up.Stage(ctx, alt, nil); err2 == nil {
+				binPath, err = p2, nil
+			}
+		}
+	}
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "下载更新失败："+err.Error())
 		return

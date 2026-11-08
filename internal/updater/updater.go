@@ -9,8 +9,8 @@
 package updater
 
 import (
-	"context"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -291,18 +291,7 @@ func (u *Manager) Check(ctx context.Context, force bool) *Status {
 		return st
 	}
 
-	st.Latest = m.Version
-	st.Notes = m.Notes
-	st.ReleasedAt = m.ReleasedAt
-	st.Source = src
-	st.HasUpdate = IsNewer(m.Version, version.Version)
-	if a, ok := m.Assets[st.Platform]; ok {
-		st.AssetName = a.Name
-		st.DownloadURL = a.URL
-		st.SHA256 = a.SHA256
-		st.AssetSize = a.Size
-		st.CanAuto = true
-	}
+	applyManifest(st, m, src)
 
 	u.mu.Lock()
 	u.cached = st
@@ -510,4 +499,37 @@ func min64(a, b int64) int64 {
 		return a
 	}
 	return b
+}
+
+// applyManifest 把清单里的版本信息填进 Status。
+func applyManifest(st *Status, m *Manifest, src string) {
+	st.Latest = m.Version
+	st.Notes = m.Notes
+	st.ReleasedAt = m.ReleasedAt
+	st.Source = src
+	st.HasUpdate = IsNewer(m.Version, version.Version)
+	if a, ok := m.Assets[st.Platform]; ok {
+		st.AssetName = a.Name
+		st.DownloadURL = a.URL
+		st.SHA256 = a.SHA256
+		st.AssetSize = a.Size
+		st.CanAuto = true
+	}
+}
+
+// CheckAPIOnly 跳过 version.json，直接用 Releases API 取元数据。
+// 用于 version.json 与实际附件不同步（例如重复发布覆盖了产物）时纠正摘要。
+func (u *Manager) CheckAPIOnly(ctx context.Context) *Status {
+	st := &Status{
+		Current:   version.Version,
+		Platform:  PlatformKey(),
+		CheckedAt: time.Now().UnixMilli(),
+	}
+	m, src, err := u.checkReleaseAPI(ctx)
+	if err != nil {
+		st.Error = err.Error()
+		return st
+	}
+	applyManifest(st, m, src+"-api")
+	return st
 }

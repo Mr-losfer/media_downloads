@@ -1,20 +1,23 @@
 # Media Super
 
 > 为低配 NAS 打造的视频下载器：**单 Go 二进制、常驻内存约 15MB、m3u8 多线程拉流 + 无损转封装成 mp4**。
-> 同时提供 **REST API** 与 **MCP（Model Context Protocol）** 两种接入方式，自带 Web 管理页。
+> 自带 Web 管理台、**REST API** 与 **MCP（Model Context Protocol）**，支持 Docker、飞牛 fnOS（fpk）与裸机运行。
 
 ```
 https://github.com/losfer778/media_downloads
 ```
 
+当前版本见 [version.json](version.json)，历史构建见 [docs/RELEASES.md](docs/RELEASES.md)。
+
 ## 为什么是它
 
-- **轻**：`CGO_ENABLED=0` 静态编译，成品 6.9MB；无 Node、无 Python、无数据库服务。
-  实测在 Celeron J1800（2 核，可用内存 1GB）上并发下载时 **峰值 RSS 16MB**。
-- **快**：m3u8 分片并发拉取（默认 8 连接/任务），直链走 HTTP Range 多段并行 + `WriteAt` 直接落盘，不需要二次合并。
-- **不烧 CPU**：m3u8 → mp4 默认用 ffmpeg `-c copy` 重封装（不解码），只在不兼容时才降级转码。
-- **省磁盘**：分片边拼接边删除，峰值临时占用只有一份视频体积。
-- **实时**：SSE 推送进度（前端进度条 + 速度 + ETA），也可配 Webhook 回调事件。
+- **轻**：`CGO_ENABLED=0` 静态编译，成品约 7MB；无 Node、无 Python、无数据库服务。
+  实测 Celeron J1800（2 核 / 1GB 可用）并发下载时**峰值 RSS 16MB**。
+- **快**：m3u8 分片并发拉取（默认 8 连接/任务），直链走 HTTP Range 多段并行 + `WriteAt` 直接落盘。
+- **不烧 CPU**：m3u8 → mp4 默认 ffmpeg `-c copy` 重封装（不解码），只有编码不兼容时才降级转码。
+- **省磁盘**：分片边拼接边删除，峰值临时占用约等于一份视频体积。
+- **实时**：SSE 推送进度，也可配 Webhook 回调事件。
+- **可自更新**：设置页内置「检查更新 / 一键更新」，优先走 `gh-proxy.com`，异常自动直连 GitHub。
 
 ## 功能
 
@@ -27,65 +30,78 @@ https://github.com/losfer778/media_downloads
 | 管理 | 预览播放、下载、改名（同步改磁盘文件）、删除（可选删文件）、取消、重试、搜索、分页 |
 | 缩略图 | 完成后自动抽帧生成封面 |
 | 设置 | 并发任务/分片连接/全局限速/UA/代理/忽略 TLS/ffmpeg 路径/转码开关/保留临时文件/自动清理/多保存目录/Webhook |
+| 系统 | 版本信息、更新检测、一键更新、修改管理员密码 |
 | 鉴权 | 后台密码（PBKDF2-SHA256 120k 轮）+ 签名 Cookie；API/MCP 用 Bearer API Key |
 | 健壮性 | 重启后未完成任务自动重排；启动清理残留分片；磁盘 <1GB 拒收新任务；设置越界自动夹紧 |
-| 界面 | 移动优先单页应用：底部导航 + 底部抽屉、44px 触控命中区、SSE 增量刷新（列表不重绘）、内置 API / MCP 文档页（示例一键复制）、可加到主屏（PWA 图标与主题色） |
-
-## 管理界面
-
-原生 JS 单页，`embed` 进二进制，无构建链、无 CDN、无字体下载：
-
-- **任务**：粘链接回车即下；进度条 + 速度 + 剩余时间实时走；预览、下载、改名、删除、取消、重试都是图标按钮（带 aria-label）
-- **文档**：`#/docs/api` 与 `#/docs/mcp`，Base URL 自动取当前访问地址（设置里填了 `public_base` 则用公网地址），curl 与客户端配置可一键复制
-- **设置**：并发/分片/限速/UA/代理/转码/清理/Webhook/保存目录，目录支持递归浏览选择
-- **移动端**：≤420px 时任务操作换行成独立按钮行；`hover:none` 设备命中区自动放大到 44px；输入框 16px 防 iOS 聚焦缩放；底部导航带 `safe-area-inset` 适配刘海屏
+| 界面 | 移动优先单页应用：底部导航 + 底部抽屉、44px 触控命中区、SSE 增量刷新、内置 API / MCP 文档页、PWA 可加到主屏 |
 
 ## 快速开始
 
+### 方式一：Docker Compose（推荐，直接拉镜像）
+
 ```bash
-# 1. 拉代码
-git clone https://github.com/losfer778/media_downloads.git && cd media_downloads
-
-# 2. 准备目录与密码
+curl -fsSLO https://raw.githubusercontent.com/losfer778/media_downloads/main/docker-compose.yml
 mkdir -p data downloads
-echo 'VF_ADMIN_PASS=你的后台密码' > .env && chmod 600 .env
-
-# 3. 起服务（首次构建镜像，J1800 上约 2~3 分钟）
-docker compose up -d --build
-
-# 4. 打开
-#   http://<NAS-IP>:9099
+docker compose up -d
+# 打开 http://<NAS-IP>:9099 ，默认密码 losfer
 ```
 
-**升级**：`git pull && docker compose up -d --build`（`data/` 里的任务记录和 API Key 会保留）。
+想改下载目录：`DOWNLOAD_DIR=/vol1/1000/影视 docker compose up -d`。
+完整说明（含单容器 `docker run`）见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
-首次启动日志里会打印 **API Key**，后台「设置 → API 与 MCP」也能看到。
-
-### 不用 Docker
+### 方式二：单条 docker run
 
 ```bash
-CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o mediasuper .
-VF_ADMIN_PASS=xxx VF_SAVE_DIRS="/data/videos:本地" ./mediasuper -addr :8080 -data ./data
+docker run -d --name mediasuper --restart unless-stopped \
+  -p 9099:8080 \
+  -e TZ=Asia/Shanghai \
+  -e MS_ADMIN_PASS=losfer \
+  -e MS_SAVE_DIRS="/downloads:下载" \
+  -v $(pwd)/data:/data \
+  -v /vol1/1000/影视:/downloads \
+  ghcr.io/losfer778/media-super:latest
+```
+
+支持 `linux/amd64`、`linux/arm64`、`linux/arm/v7`。
+
+### 方式三：飞牛 fnOS（fpk）
+
+到 [Releases](https://github.com/losfer778/media_downloads/releases) 下载 `mediasuper_<版本>_fnos-x86.fpk` 或 `_fnos-arm.fpk`，
+在应用中心手动安装即可。打包与调试见 [docs/FNOS.md](docs/FNOS.md)。
+
+### 方式四：裸机二进制
+
+```bash
+curl -fsSL -o mediasuper \
+  https://gh-proxy.com/https://github.com/losfer778/media_downloads/releases/latest/download/mediasuper-linux-amd64
+chmod +x mediasuper
+MS_ADMIN_PASS=losfer MS_SAVE_DIRS="/data/videos:本地" ./mediasuper -addr :8080 -data ./data
 ```
 
 需要系统里有 `ffmpeg`（`apk add ffmpeg` / `apt install ffmpeg`）。没装也能下 m3u8 分片，但无法合成 mp4。
+
+## 首次登录
+
+- 地址：`http://<NAS-IP>:9099`
+- 默认密码：`losfer`（登录后到「设置 → 管理员密码」修改）
+- API Key：启动日志里会打印，后台「设置 → API 与 MCP」也能复制
 
 ## 环境变量（仅首次启动生效）
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `VF_ADDR` | `:8080` | 监听地址 |
-| `VF_DATA_DIR` | `/data` | 数据库 + 临时分片目录 |
-| `VF_ADMIN_PASS` | `mediasuper123` | 后台密码，首次启动写入数据库 |
-| `VF_SAVE_DIRS` | `/downloads/hdd:硬盘` | `路径:标签,路径:标签` |
-| `VF_DEFAULT_DIR` | 第一个目录 | 默认保存目录 |
-| `VF_MAX_TASKS` | `2` | 同时下载任务数 |
-| `VF_SEG_CONNS` | `8` | 单任务并发连接数 |
-| `VF_SPEED_LIMIT_KB` | `0` | 全局限速，0 不限 |
-| `VF_FFMPEG` | `ffmpeg` | ffmpeg 可执行路径 |
-| `VF_WEBHOOK_URL` | 空 | 事件回调地址 |
+| `MS_ADDR` | `:8080` | 监听地址 |
+| `MS_DATA_DIR` | `/data` | 数据库 + 临时分片 + 待安装更新 |
+| `MS_ADMIN_PASS` | `losfer` | 后台密码，首次启动写入数据库 |
+| `MS_SAVE_DIRS` | `/downloads:下载` | `路径:标签,路径:标签` |
+| `MS_DEFAULT_DIR` | 第一个目录 | 默认保存目录 |
+| `MS_MAX_TASKS` | `2` | 同时下载任务数 |
+| `MS_SEG_CONNS` | `8` | 单任务并发连接数 |
+| `MS_SPEED_LIMIT_KB` | `0` | 全局限速，0 不限 |
+| `MS_FFMPEG` | `ffmpeg` | ffmpeg 可执行路径 |
+| `MS_WEBHOOK_URL` | 空 | 事件回调地址 |
 
-> 启动后这些值都存进了数据库，改环境变量不再生效——请到「设置」页改，或删掉 `data/` 重来。
+> 旧的 `VF_*` 变量仍然兼容。启动后这些值都存进了数据库，改环境变量不再生效——请到「设置」页改。
 
 ## REST API
 
@@ -111,12 +127,14 @@ VF_ADMIN_PASS=xxx VF_SAVE_DIRS="/data/videos:本地" ./mediasuper -addr :8080 -d
 | GET/PUT | `/api/settings` | 读/改设置（PUT 只传要改的字段） |
 | GET | `/api/stats` | 统计 + 各磁盘剩余空间 |
 | GET | `/api/browse?path=/` | 列目录（选保存路径用） |
+| GET | `/api/system/info` | 版本、架构、运行环境 |
+| GET | `/api/system/update` | 检查更新（`?force=1` 跳过缓存） |
+| POST | `/api/system/update` | 下载并应用更新，随后重启 |
+| POST | `/api/system/password` | `{"old_password":"…","new_password":"…"}` |
 | POST | `/mcp` | MCP JSON-RPC 2.0 端点 |
 
-示例：
-
 ```bash
-KEY=vf_xxxxxxxx
+KEY=ms_xxxxxxxx
 curl -s -X POST http://192.168.1.123:9099/api/tasks \
   -H "Authorization: Bearer $KEY" -H 'Content-Type: application/json' \
   -d '{"url":"https://example.com/hls/index.m3u8","title":"测试视频"}'
@@ -129,14 +147,24 @@ curl -s http://192.168.1.123:9099/api/tasks -H "Authorization: Bearer $KEY"
 端点：`POST http://<NAS-IP>:9099/mcp`，鉴权 `Authorization: Bearer <API Key>`。
 协议：JSON-RPC 2.0 / Streamable HTTP，支持 `initialize`、`tools/list`、`tools/call`、`ping`。
 
-### 工具清单（11 个）
-
-`submit_download`、`list_tasks`、`get_task`、`cancel_task`、`retry_task`、
+工具（11 个）：`submit_download`、`list_tasks`、`get_task`、`cancel_task`、`retry_task`、
 `delete_task`、`rename_task`、`get_download_link`、`get_settings`、`update_settings`、`get_stats`
 
-### 客户端配置（只支持 stdio 的客户端走代理模式）
+支持 HTTP 直连的客户端（Cherry Studio / Cline / 自研 Agent）：
 
-Claude Desktop 之类：
+```json
+{
+  "mcpServers": {
+    "mediasuper": {
+      "type": "http",
+      "url": "http://192.168.1.123:9099/mcp",
+      "headers": { "Authorization": "Bearer ms_xxxxxxxx" }
+    }
+  }
+}
+```
+
+只支持 stdio 的客户端（Claude Desktop）：
 
 ```json
 {
@@ -144,53 +172,20 @@ Claude Desktop 之类：
     "mediasuper": {
       "command": "docker",
       "args": ["exec", "-i", "mediasuper", "/usr/local/bin/mediasuper",
-               "-stdio", "-remote", "http://127.0.0.1:8080", "-key", "vf_xxxxxxxx"]
+               "-stdio", "-remote", "http://127.0.0.1:8080", "-key", "ms_xxxxxxxx"]
     }
   }
 }
 ```
 
-或本机有二进制时：
+## 更新
 
-```json
-{
-  "mcpServers": {
-    "mediasuper": {
-      "command": "/usr/local/bin/mediasuper",
-      "args": ["-stdio", "-remote", "http://192.168.1.123:9099", "-key", "vf_xxxxxxxx"]
-    }
-  }
-}
-```
+两种方式，任选：
 
-支持 HTTP 直连的客户端（Cherry Studio / Cline / 自研 Agent）直接填 URL + Bearer 即可。
+1. **后台一键更新**：设置 → 系统更新 → 检查更新 → 一键更新。下载校验后热切换进程，容器重启也保留。
+2. **换镜像**：`docker compose pull && docker compose up -d`。
 
-## SSE 与 Webhook
-
-### SSE
-
-```
-GET /api/events            （Cookie 或 ?token=API Key）
-event: hello    → {"version":"1.1.0"}
-event: snapshot → [任务数组]
-event: task     → 单个任务（变化即推，服务端 500ms 节流）
-event: stats    → 统计信息（每 3 秒）
-event: task.deleted → {"id":"…"}
-: ping          → 每 20 秒心跳
-```
-
-### Webhook
-
-配置后每个事件 POST JSON：
-
-```json
-{ "event": "task.completed", "time": 1730000000000, "task": { …完整任务对象… } }
-```
-
-请求头：`X-VF-Event`、`X-VF-Signature: sha256=<hmac>`（配置了密钥时）。
-验签：`HMAC_SHA256(secret, raw_body)`，用常量时间比较。
-事件：`task.created` / `task.started` / `task.completed` / `task.failed` / `task.canceled`。
-失败重试 2 次（间隔 2s），超时 8s，异步不阻塞下载。
+细节与原理（gh-proxy 优先、SHA256 校验、失败回滚）见 [docs/UPDATE.md](docs/UPDATE.md)。
 
 ## 低配 NAS 调优
 
@@ -203,6 +198,35 @@ event: task.deleted → {"id":"…"}
 | 存储紧张 | 设 `auto_clean_days=7` 自动清理；下载中峰值只占 1× 视频体积 |
 
 容器已内置保护：`mem_limit 512m`、`cpus 1.0`、`pids_limit 256`。
+
+## 目录结构
+
+```
+cmd/mediasuper/         程序入口（参数解析 / -version / -stdio）
+internal/app/           装配层：数据库、设置、HTTP 服务、优雅退出
+internal/engine/        下载引擎：调度、m3u8、Range 分段、ffmpeg、SSE、Webhook
+internal/server/        HTTP：REST、鉴权、MCP、静态资源、系统接口
+internal/updater/       更新检测 / 下载校验 / 热切换
+internal/version/       版本号（构建时 -ldflags 注入）
+web/                    前端（原生 JS，embed 进二进制）
+deploy/docker/          Dockerfile、构建用 compose
+deploy/fnos/            fnOS fpk 模板（manifest / cmd / config / ui）
+scripts/                build-release.sh、build-fpk.sh、git-push.sh
+docs/                   部署、更新、fnOS、架构、版本列表
+.github/workflows/      Release 与多架构镜像流水线
+```
+
+详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+
+## 文档
+
+| 文档 | 内容 |
+|---|---|
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Docker 单容器 / Compose / 镜像源 / 目录权限 |
+| [docs/UPDATE.md](docs/UPDATE.md) | 更新检测、一键更新、代理策略、回滚 |
+| [docs/FNOS.md](docs/FNOS.md) | fpk 打包流程、安装、日志排查 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 代码结构与关键流程 |
+| [docs/RELEASES.md](docs/RELEASES.md) | 历史构建列表 |
 
 ## 常见问题
 
@@ -218,26 +242,8 @@ event: task.deleted → {"id":"…"}
 **任务重启后从头开始？**
 是的，分片不做断点续传（避免错位）。已完成的文件不受影响。
 
-**浏览器不能播放某种编码？**
-服务端只做容器转换，播放能力取决于浏览器。HEVC 建议客户端播放器。
-
-## 目录结构
-
-```
-main.go      启动、内嵌前端、stdio 代理
-model.go     任务/设置数据结构
-store.go     bbolt 持久化
-manager.go   调度器、并发、进度、清理
-hls.go       m3u8 解析 + 分片并发下载 + AES 解密 + 拼接
-download.go  探测 + Range 多段并行 + 单流下载
-ffmpeg.go    重封装 / 转码 / 缩略图 / 时长
-api.go       REST + SSE + 静态资源
-mcp.go       MCP JSON-RPC
-auth.go      PBKDF2 / 会话 / API Key
-sse.go       事件广播
-webhook.go   事件回调
-web/         前端（原生 JS，embed 进二进制）
-```
+**忘记后台密码？**
+删掉数据目录里的 `mediasuper.db` 会重置为 `losfer`，但任务记录与 API Key 也会一起丢失。
 
 ## 许可
 

@@ -55,10 +55,10 @@ func mcpTools() []mcpTool {
 			Name:        "submit_download",
 			Description: "提交一个视频/音频下载任务。支持 m3u8(HLS)、mp4、flv、ts 等直链；m3u8 会自动多线程拉分片并转封装成 mp4。返回任务 ID。",
 			InputSchema: obj(map[string]any{
-				"url":       p("string", "视频直链（http/https，.m3u8 或 .mp4 等）"),
-				"title":     p("string", "可选，保存文件名（不含扩展名）"),
-				"save_dir":  p("string", "可选，保存目录，必须是设置里配置过的目录"),
-				"headers":   map[string]any{"type": "object", "description": "可选，防盗链请求头，如 {\"Referer\":\"...\",\"Cookie\":\"...\"}"},
+				"url":      p("string", "视频直链（http/https，.m3u8 或 .mp4 等）"),
+				"title":    p("string", "可选，保存文件名（不含扩展名）"),
+				"save_dir": p("string", "可选，保存目录，必须是设置里配置过的目录"),
+				"headers":  map[string]any{"type": "object", "description": "可选，防盗链请求头，如 {\"Referer\":\"...\",\"Cookie\":\"...\"}"},
 			}, "url"),
 		},
 		{
@@ -196,7 +196,7 @@ func (s *Server) dispatch(req rpcRequest, host string) (*rpcResponse, bool) {
 			"protocolVersion": ver,
 			"capabilities":    map[string]any{"tools": map[string]any{"listChanged": false}},
 			"serverInfo":      map[string]any{"name": version.AppID, "version": version.Version},
-			"instructions": "视频下载管理服务。用 submit_download 提交 m3u8/mp4 直链，用 get_task / list_tasks 查询进度（progress 为百分比，speed 单位字节/秒），用 get_download_link 获取可播放链接。",
+			"instructions":    "视频下载管理服务。用 submit_download 提交 m3u8/mp4 直链，用 get_task / list_tasks 查询进度（progress 为百分比，speed 单位字节/秒），用 get_download_link 获取可播放链接。",
 		}
 
 	case "notifications/initialized", "notifications/cancelled", "notifications/roots/list_changed":
@@ -248,10 +248,10 @@ func (s *Server) callTool(name string, args json.RawMessage, host string) (any, 
 			return nil, err
 		}
 		return textResult(map[string]any{
-			"ok":      true,
-			"task_id": t.ID,
-			"status":  t.Status,
-			"title":   t.Title,
+			"ok":       true,
+			"task_id":  t.ID,
+			"status":   t.Status,
+			"title":    t.Title,
 			"save_dir": t.SaveDir,
 		}, false), nil
 
@@ -352,10 +352,10 @@ func (s *Server) callTool(name string, args json.RawMessage, host string) (any, 
 			base = "http://" + host
 		}
 		return textResult(map[string]any{
-			"task_id":  t.ID,
-			"file_name": t.FileName,
-			"size":     t.Size,
-			"play_url":  fmt.Sprintf("%s/api/tasks/%s/stream?token=%s", base, t.ID, st.APIKey),
+			"task_id":      t.ID,
+			"file_name":    t.FileName,
+			"size":         t.Size,
+			"play_url":     fmt.Sprintf("%s/api/tasks/%s/stream?token=%s", base, t.ID, st.APIKey),
 			"download_url": fmt.Sprintf("%s/api/tasks/%s/download?token=%s", base, t.ID, st.APIKey),
 		}, false), nil
 
