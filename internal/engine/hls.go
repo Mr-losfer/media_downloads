@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -384,6 +385,43 @@ func copyDecrypt(dst io.Writer, src io.Reader, key, iv []byte) (int64, error) {
 	return written, nil
 }
 
+// trimSegments 按设置丢掉片头 / 片尾的分片，返回保留的切片和实际丢掉的片数。
+// 至少保留 1 片：N 填得比总片数还大时不会把整个任务变成空文件。
+func trimSegments(segs []*hlsSeg, st Settings) ([]*hlsSeg, int, int) {
+	if !st.TrimEnabled || len(segs) == 0 {
+		return segs, 0, 0
+	}
+	head, tail := st.TrimHead, st.TrimTail
+	if head < 0 {
+		head = 0
+	}
+	if tail < 0 {
+		tail = 0
+	}
+	if head > len(segs)-1 {
+		head = len(segs) - 1
+	}
+	if head+tail > len(segs)-1 {
+		tail = len(segs) - head - 1
+	}
+	if head == 0 && tail == 0 {
+		return segs, 0, 0
+	}
+	return segs[head : len(segs)-tail], head, tail
+}
+
+// playlistDuration 优先按保留的分片累加，保证裁剪后展示的时长不是原片时长。
+func playlistDuration(segs []*hlsSeg, pl *hlsPlaylist) float64 {
+	if len(segs) == len(pl.Segments) {
+		return pl.Duration
+	}
+	var d float64
+	for _, s := range segs {
+		d += s.Duration
+	}
+	return d
+}
+
 // downloadHLS 下载全部分片 → 顺序拼接 → 交给 ffmpeg 重封装。
 func (d *dlCtx) downloadHLS(ctx context.Context, rawurl string) (string, int64, error) {
 	pl, base, err := d.fetchPlaylist(ctx, rawurl)
@@ -395,21 +433,27 @@ func (d *dlCtx) downloadHLS(ctx context.Context, rawurl string) (string, int64, 
 		return "", 0, errors.New("播放列表为空")
 	}
 
+	segs, head, tail := trimSegments(pl.Segments, d.st)
+	if head > 0 || tail > 0 {
+		log.Printf("[%s] 去掉片头 %d 片、片尾 %d 片：%d → %d 片",
+			d.task.ID, head, tail, len(pl.Segments), len(segs))
+	}
+
 	d.task.Kind = "hls"
 	d.task.Format = "mp4"
-	d.task.SegTotal = len(pl.Segments)
-	d.task.Duration = pl.Duration
-	d.j.segTotal.Store(int64(len(pl.Segments)))
+	d.task.SegTotal = len(segs)
+	d.task.Duration = playlistDuration(segs, pl)
+	d.j.segTotal.Store(int64(len(segs)))
 	d.setFileName("mp4", "")
 
 	conns := clampInt(d.st.SegConns, 1, 32)
-	if len(pl.Segments) < conns {
-		conns = len(pl.Segments)
+	if len(segs) < conns {
+		conns = len(segs)
 	}
 	d.task.Conns = conns
 	d.m.progressUpdate(d.j, d.task)
 
-	segPaths := make([]string, len(pl.Segments))
+	segPaths := make([]string, len(segs))
 	var mu sync.Mutex
 	sem := make(chan struct{}, conns)
 	errCh := make(chan error, 1)
@@ -417,7 +461,7 @@ func (d *dlCtx) downloadHLS(ctx context.Context, rawurl string) (string, int64, 
 	defer cancel()
 
 	var wg sync.WaitGroup
-	for i, seg := range pl.Segments {
+	for i, seg := range segs {
 		select {
 		case <-ctx.Done():
 		case sem <- struct{}{}:
@@ -435,7 +479,7 @@ func (d *dlCtx) downloadHLS(ctx context.Context, rawurl string) (string, int64, 
 			p := filepath.Join(d.tmpDir, fmt.Sprintf("%06d.seg", i))
 			if err := d.fetchSegment(ctx, seg, i, p); err != nil {
 				select {
-				case errCh <- fmt.Errorf("分片 %d/%d 失败: %w", i+1, len(pl.Segments), err):
+				case errCh <- fmt.Errorf("分片 %d/%d 失败: %w", i+1, len(segs), err):
 					cancel()
 				default:
 				}

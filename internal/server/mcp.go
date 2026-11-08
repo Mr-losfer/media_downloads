@@ -114,7 +114,7 @@ func mcpTools() []mcpTool {
 		},
 		{
 			Name:        "update_settings",
-			Description: "修改配置（只传要改的字段即可）。可改: max_tasks(1-8 并发任务)、seg_conns(1-32 分片连接)、speed_limit_kb(0=不限)、save_dirs、default_dir、webhook_url、webhook_secret、auto_clean_days、hls_quality(best/worst)、allow_transcode、thumbnails、keep_temp。",
+			Description: "修改配置（只传要改的字段即可）。可改: max_tasks(1-8 并发任务)、seg_conns(1-32 分片连接)、speed_limit_kb(0=不限)、save_dirs、default_dir、webhook_url、webhook_secret、auto_clean_days、hls_quality(best/worst)、trim_enabled/trim_head/trim_tail(去掉片头片尾分片)、allow_transcode、thumbnails、keep_temp。",
 			InputSchema: obj(map[string]any{
 				"max_tasks":       map[string]any{"type": "integer", "description": "同时下载任务数 1-8"},
 				"seg_conns":       map[string]any{"type": "integer", "description": "单任务并发连接数 1-32"},
@@ -125,6 +125,9 @@ func mcpTools() []mcpTool {
 				"webhook_secret":  p("string", "回调签名密钥（HMAC-SHA256）"),
 				"auto_clean_days": map[string]any{"type": "integer", "description": "完成 N 天后自动删除，0 关闭"},
 				"hls_quality":     p("string", "best 或 worst"),
+				"trim_enabled":    map[string]any{"type": "boolean", "description": "是否去掉片头 / 片尾分片（只对 HLS 生效）"},
+				"trim_head":       map[string]any{"type": "integer", "description": "去掉开头 N 个分片，0-99"},
+				"trim_tail":       map[string]any{"type": "integer", "description": "去掉结尾 N 个分片，0-99"},
 				"allow_transcode": map[string]any{"type": "boolean", "description": "重封装失败时是否允许转码"},
 				"thumbnails":      map[string]any{"type": "boolean", "description": "是否生成视频缩略图"},
 				"keep_temp":       map[string]any{"type": "boolean", "description": "是否保留临时分片"},

@@ -444,6 +444,9 @@ event: task.deleted {"id":"…"}
                 <tr><td class="mono">webhook_secret</td><td>string</td><td>HMAC 签名密钥</td></tr>
                 <tr><td class="mono">auto_clean_days</td><td>integer</td><td>完成 N 天后自动删除，0 关闭</td></tr>
                 <tr><td class="mono">hls_quality</td><td>string</td><td>best / worst</td></tr>
+                <tr><td class="mono">trim_enabled</td><td>boolean</td><td>是否去掉片头 / 片尾分片（仅 HLS）</td></tr>
+                <tr><td class="mono">trim_head</td><td>integer</td><td>去掉开头 N 个分片，0–99</td></tr>
+                <tr><td class="mono">trim_tail</td><td>integer</td><td>去掉结尾 N 个分片，0–99</td></tr>
                 <tr><td class="mono">allow_transcode</td><td>boolean</td><td>重封装失败时是否转码</td></tr>
                 <tr><td class="mono">thumbnails</td><td>boolean</td><td>是否生成缩略图</td></tr>
               </tbody>
@@ -478,6 +481,17 @@ event: task.deleted {"id":"…"}
 
     <!-- ---------------- 设置 ---------------- -->
     <section id="viewSettings" class="hidden">
+      <div class="toolbar set-toolbar">
+        <div class="segmented" role="group" aria-label="设置分类">
+          <button type="button" data-set="update" aria-pressed="true">更新</button>
+          <button type="button" data-set="download" aria-pressed="false">下载</button>
+          <button type="button" data-set="storage" aria-pressed="false">存储</button>
+          <button type="button" data-set="notify" aria-pressed="false">通知</button>
+          <button type="button" data-set="security" aria-pressed="false">安全</button>
+        </div>
+      </div>
+
+      <div id="setUpdate">
       <div class="panel" id="panelUpdate">
         <h3>
           系统更新
@@ -506,18 +520,9 @@ event: task.deleted {"id":"…"}
           也可以关掉这里，直接用 <code>docker compose pull &amp;&amp; up -d</code> 升级镜像。
         </p>
       </div>
+      </div><!-- /setUpdate -->
 
-      <div class="panel">
-        <h3>管理员密码</h3>
-        <p class="hint">默认密码是 <code>losfer</code>，首次登录后建议立即修改。修改后旧密码立即失效。</p>
-        <div class="grid2">
-          <div class="field full"><label class="lbl" for="pwOld">当前密码</label><input type="password" id="pwOld" autocomplete="current-password" placeholder="请输入当前密码"></div>
-          <div class="field"><label class="lbl" for="pwNew">新密码（至少 6 位）</label><input type="password" id="pwNew" autocomplete="new-password"></div>
-          <div class="field"><label class="lbl" for="pwNew2">确认新密码</label><input type="password" id="pwNew2" autocomplete="new-password"></div>
-        </div>
-        <div style="margin-top:10px"><button class="sm" type="button" id="btnChangePw">修改密码</button></div>
-      </div>
-
+      <div id="setDownload" class="hidden">
       <div class="panel">
         <h3>下载性能</h3>
         <p class="hint">低配设备建议：并发任务 2、分片连接 8。两者相乘即最大同时连接数。</p>
@@ -551,6 +556,19 @@ event: task.deleted {"id":"…"}
       </div>
 
       <div class="panel">
+        <h3>去除片头 / 片尾</h3>
+        <p class="hint">按 m3u8 分片计数：开头跳过 N 片、结尾丢掉 N 片，中间部分才拼接。适合开头或结尾有黑屏、台标、广告的源。只对 HLS 生效，设置只影响之后提交的任务。</p>
+        <label class="check"><input type="checkbox" id="sTrim"><span>启用去除片头 / 片尾</span></label>
+        <div class="grid2" style="margin-top:8px">
+          <div class="field"><label class="lbl" for="sTrimHead">去掉开头 N 片</label><input type="number" id="sTrimHead" min="0" max="99" inputmode="numeric" value="0"></div>
+          <div class="field"><label class="lbl" for="sTrimTail">去掉结尾 N 片</label><input type="number" id="sTrimTail" min="0" max="99" inputmode="numeric" value="0"></div>
+        </div>
+        <p class="hint" style="margin-top:8px">分片时长因源而异（常见 2–10 秒/片），N 超过总片数时会自动保留至少 1 片。</p>
+      </div>
+      </div><!-- /setDownload -->
+
+      <div id="setStorage" class="hidden">
+      <div class="panel">
         <h3>保存目录</h3>
         <p class="hint">第一行是默认目录；容器内路径需在 docker-compose 里挂载好。</p>
         <div id="dirRows"></div>
@@ -558,15 +576,37 @@ event: task.deleted {"id":"…"}
       </div>
 
       <div class="panel">
-        <h3>事件与清理</h3>
+        <h3>自动清理</h3>
+        <div class="grid2">
+          <div class="field"><label class="lbl" for="sClean">完成后 N 天自动删除（0 关闭）</label><input type="number" id="sClean" min="0" inputmode="numeric"></div>
+        </div>
+        <p class="hint" style="margin-top:10px">只清理磁盘文件，任务记录继续保留，方便回看。</p>
+      </div>
+      </div><!-- /setStorage -->
+
+      <div id="setNotify" class="hidden">
+      <div class="panel">
+        <h3>Webhook 通知</h3>
         <div class="grid2">
           <div class="field full"><label class="lbl" for="sWebhook">Webhook 地址</label><input type="text" id="sWebhook" placeholder="https://your-server/hook" inputmode="url"></div>
           <div class="field"><label class="lbl" for="sHookSecret">签名密钥（HMAC-SHA256）</label><input type="text" id="sHookSecret" placeholder="可选"></div>
-          <div class="field"><label class="lbl" for="sClean">完成后 N 天自动删除（0 关闭）</label><input type="number" id="sClean" min="0" inputmode="numeric"></div>
           <div class="field full"><label class="lbl" for="sPublic">对外访问地址</label><input type="text" id="sPublic" placeholder="http://192.168.1.123:9099" inputmode="url"></div>
         </div>
         <p class="hint" style="margin-top:10px">事件类型：<code>task.created</code> / <code>started</code> / <code>completed</code> / <code>failed</code> / <code>canceled</code>，
-          请求头带 <code>X-VF-Event</code> 与 <code>X-VF-Signature</code>。</p>
+          请求头带 <code>X-VF-Event</code> 与 <code>X-VF-Signature</code>。对外访问地址会用在文档页的示例与下载链接里。</p>
+      </div>
+      </div><!-- /setNotify -->
+
+      <div id="setSecurity" class="hidden">
+      <div class="panel">
+        <h3>管理员密码</h3>
+        <p class="hint">默认密码是 <code>losfer</code>，首次登录后建议立即修改。修改后旧密码立即失效。</p>
+        <div class="grid2">
+          <div class="field full"><label class="lbl" for="pwOld">当前密码</label><input type="password" id="pwOld" autocomplete="current-password" placeholder="请输入当前密码"></div>
+          <div class="field"><label class="lbl" for="pwNew">新密码（至少 6 位）</label><input type="password" id="pwNew" autocomplete="new-password"></div>
+          <div class="field"><label class="lbl" for="pwNew2">确认新密码</label><input type="password" id="pwNew2" autocomplete="new-password"></div>
+        </div>
+        <div style="margin-top:10px"><button class="sm" type="button" id="btnChangePw">修改密码</button></div>
       </div>
 
       <div class="panel">
@@ -577,6 +617,7 @@ event: task.deleted {"id":"…"}
         </div>
         <p class="hint" style="margin-top:10px">REST：<code>Authorization: Bearer &lt;API Key&gt;</code>　MCP 端点：<code>POST /mcp</code></p>
       </div>
+      </div><!-- /setSecurity -->
 
       <div class="save-bar">
         <button class="primary" id="btnSaveSettings">保存设置</button>

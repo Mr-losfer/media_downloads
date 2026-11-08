@@ -85,6 +85,9 @@ type Settings struct {
 	Proxy           string    `json:"proxy"`
 	InsecureTLS     bool      `json:"insecure_tls"`
 	HLSQuality      string    `json:"hls_quality"` // best | worst
+	TrimEnabled     bool      `json:"trim_enabled"`
+	TrimHead        int       `json:"trim_head"` // 去掉开头 N 个分片
+	TrimTail        int       `json:"trim_tail"` // 去掉结尾 N 个分片
 	FFmpegPath      string    `json:"ffmpeg_path"`
 	AllowTranscode  bool      `json:"allow_transcode"`
 	TranscodePreset string    `json:"transcode_preset"`
@@ -132,6 +135,8 @@ func (s *Settings) Sanitize() {
 	s.SpeedLimitKB = clampInt(s.SpeedLimitKB, 0, 1048576)
 	s.MaxRetries = clampInt(s.MaxRetries, 0, 10)
 	s.AutoCleanDays = clampInt(s.AutoCleanDays, 0, 3650)
+	s.TrimHead = clampInt(s.TrimHead, 0, 99)
+	s.TrimTail = clampInt(s.TrimTail, 0, 99)
 	if s.UserAgent == "" {
 		s.UserAgent = defaultUA
 	}

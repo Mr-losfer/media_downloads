@@ -74,6 +74,7 @@ const state = {
   q: '',
   view: 'home',
   doc: 'api',
+  setTab: 'update',
   es: null
 };
 let visIds = [];
@@ -676,14 +677,26 @@ const SET = {
   max_retries: '#sRetries', hls_quality: '#sQuality', transcode_preset: '#sPreset',
   user_agent: '#sUA', proxy: '#sProxy', ffmpeg_path: '#sFFmpeg',
   webhook_url: '#sWebhook', webhook_secret: '#sHookSecret',
-  auto_clean_days: '#sClean', public_base: '#sPublic'
+  auto_clean_days: '#sClean', public_base: '#sPublic',
+  trim_head: '#sTrimHead', trim_tail: '#sTrimTail'
 };
 const BOOL = {
   allow_transcode: '#sTranscode', thumbnails: '#sThumbs',
   keep_temp: '#sKeepTemp', insecure_tls: '#sInsecure',
-  auto_update: '#sAutoUpdate'
+  auto_update: '#sAutoUpdate', trim_enabled: '#sTrim'
 };
 function numVal(sel) { const v = parseInt($(sel).value, 10); return isNaN(v) ? 0 : v; }
+
+// 关闭「去除片头片尾」时把两个输入框置灰，避免填了数字却没生效
+function paintTrim() {
+  const sw = $('#sTrim');
+  const on = sw ? sw.checked : false;
+  ['#sTrimHead', '#sTrimTail'].forEach((s) => {
+    const el = $(s);
+    if (el) el.disabled = !on;
+  });
+}
+if ($('#sTrim')) $('#sTrim').addEventListener('change', paintTrim);
 
 async function loadSettings() {
   try {
@@ -698,6 +711,7 @@ async function loadSettings() {
       const el = $(BOOL[k]);
       if (el) el.checked = !!st[k];
     });
+    paintTrim();
     renderDirs(st.save_dirs || []);
     fillDirSelect(st);
     if (st.api_key) $('#apiKeyBox').textContent = st.api_key;
@@ -1067,6 +1081,23 @@ $$('[data-doc]').forEach((b) => b.addEventListener('click', () => {
   if (location.hash !== h) history.replaceState(null, '', h);
 }));
 
+/* ---------------- 设置分类 ---------------- */
+const SET_TABS = ['update', 'download', 'storage', 'notify', 'security'];
+function setSetTab(t) {
+  if (SET_TABS.indexOf(t) < 0) t = 'update';
+  state.setTab = t;
+  $$('[data-set]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.set === t)));
+  SET_TABS.forEach((k) => {
+    const el = $('#set' + k.charAt(0).toUpperCase() + k.slice(1));
+    if (el) el.classList.toggle('hidden', k !== t);
+  });
+}
+$$('[data-set]').forEach((b) => b.addEventListener('click', () => {
+  setSetTab(b.dataset.set);
+  const h = '#/settings/' + b.dataset.set;
+  if (location.hash !== h) history.replaceState(null, '', h);
+}));
+
 function applyBase() {
   const pb = state.settings && state.settings.public_base ? String(state.settings.public_base) : '';
   const origin = (pb || location.origin).replace(/\/+$/, '');
@@ -1109,6 +1140,7 @@ function route() {
     else a.removeAttribute('aria-current');
   });
   if (view === 'docs') setDoc(parts[1] === 'mcp' ? 'mcp' : 'api');
+  if (view === 'settings') setSetTab(parts[1] || state.setTab);
   document.title = view === 'docs' ? 'API / MCP 文档 · Media Super'
     : view === 'settings' ? '设置 · Media Super'
     : view === 'tasks' ? '任务 · Media Super'
