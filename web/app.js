@@ -177,7 +177,7 @@ async function enterApp() {
   connectEvents();
   // 进后台先静默查一次更新，命中 5 分钟缓存时几乎零开销
   setTimeout(() => checkUpdate(false), 1200);
-  $('#inUrl').focus({ preventScroll: true });
+  if (state.view === 'home') $('#inUrl').focus({ preventScroll: true });
 }
 
 /* ---------------- 任务加载与渲染 ---------------- */
@@ -286,7 +286,8 @@ function emptyHTML() {
   if (state.q.trim()) {
     return '<li class="empty">' + ico('link') + '<h3>没有匹配的任务</h3><p>换个关键词试试。</p></li>';
   }
-  return '<li class="empty">' + ico('film') + '<h3>还没有下载任务</h3><p>粘贴一个 m3u8 或 mp4 直链，上面回车即可开始。</p></li>';
+  return '<li class="empty">' + ico('film') + '<h3>还没有下载任务</h3><p>去「首页」粘贴一个 m3u8 或 mp4 直链，回车即可开始。</p>' +
+    '<a class="empty-go" href="#/home">去首页添加</a></li>';
 }
 
 function paintList(items) {
@@ -476,7 +477,6 @@ $('#submitForm').addEventListener('submit', async (e) => {
     renderList(true);
     toast('已加入队列', 'ok');
     jumpToTask(t.id);
-    $('#inUrl').focus({ preventScroll: true });
   } catch (ex) {
     toast(ex.message, 'err');
   } finally {
@@ -484,9 +484,9 @@ $('#submitForm').addEventListener('submit', async (e) => {
   }
 });
 
-// jumpToTask 回到首页并滚动到新任务，方便确认是否开始下载
+// jumpToTask 跳到任务页并滚动到新任务，方便确认是否开始下载
 function jumpToTask(id) {
-  if (state.view !== 'home') location.hash = '#/home';
+  if (state.view !== 'tasks') location.hash = '#/tasks';
   const focus = () => {
     const li = document.getElementById('t-' + id);
     if (!li) return;
@@ -494,7 +494,7 @@ function jumpToTask(id) {
     li.classList.add('flash');
     setTimeout(() => li.classList.remove('flash'), 1800);
   };
-  setTimeout(focus, state.view === 'home' ? 60 : 240);
+  setTimeout(focus, state.view === 'tasks' ? 60 : 240);
 }
 
 /* ---------------- 列表操作（事件委托） ---------------- */
@@ -1091,14 +1091,15 @@ document.addEventListener('click', (e) => {
 });
 
 /* ---------------- 路由 ---------------- */
+const VIEWS = ['home', 'tasks', 'docs', 'settings'];
 function route() {
   const raw = location.hash.replace(/^#\/?/, '');
   const parts = raw.split('/').filter(Boolean);
   let view = parts[0] || 'home';
-  if (view === 'tasks') view = 'home'; // 兼容旧链接
-  if (['home', 'docs', 'settings'].indexOf(view) < 0) view = 'home';
+  if (VIEWS.indexOf(view) < 0) view = 'home';
   state.view = view;
   $('#viewHome').classList.toggle('hidden', view !== 'home');
+  $('#viewTasks').classList.toggle('hidden', view !== 'tasks');
   $('#viewDocs').classList.toggle('hidden', view !== 'docs');
   $('#viewSettings').classList.toggle('hidden', view !== 'settings');
   $$('.tabbar a').forEach((a) => {
@@ -1108,6 +1109,7 @@ function route() {
   if (view === 'docs') setDoc(parts[1] === 'mcp' ? 'mcp' : 'api');
   document.title = view === 'docs' ? 'API / MCP 文档 · Media Super'
     : view === 'settings' ? '设置 · Media Super'
+    : view === 'tasks' ? '任务 · Media Super'
     : '首页 · Media Super';
   window.scrollTo(0, 0);
 }

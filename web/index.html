@@ -72,6 +72,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>
       <span>首页</span>
     </a>
+    <a href="#/tasks" data-view="tasks">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M4 12h10M4 18h7"/><path d="M18 9v8m0 0l-2.6-2.6M18 17l2.6-2.6"/></svg>
+      <span>任务</span>
+    </a>
     <a href="#/docs/api" data-view="docs">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M8 8h7M8 12h5"/></svg>
       <span>文档</span>
@@ -128,6 +132,11 @@
         </details>
       </form>
 
+      <p class="home-tip">提交后会自动跳到「任务」页，随时看进度。</p>
+    </section>
+
+    <!-- ---------------- 任务 ---------------- -->
+    <section id="viewTasks" class="hidden">
       <div class="metrics">
         <div><span class="m-k">进行中</span><span class="m-v accent" id="stActive">0</span></div>
         <div><span class="m-k">排队</span><span class="m-v" id="stQueued">0</span></div>
