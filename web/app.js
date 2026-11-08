@@ -72,7 +72,7 @@ const state = {
   settings: null,
   filter: 'all',
   q: '',
-  view: 'tasks',
+  view: 'home',
   doc: 'api',
   es: null
 };
@@ -132,7 +132,6 @@ function showLogin() {
   if (state.es) { state.es.close(); state.es = null; }
   $('#appView').classList.add('hidden');
   $('#loginView').classList.remove('hidden');
-  setLive(false);
   setTimeout(() => { const p = $('#loginPass'); if (p) p.focus(); }, 60);
 }
 function showApp() {
@@ -156,11 +155,6 @@ $('#loginForm').addEventListener('submit', async (e) => {
   }
 });
 
-$('#btnLogout').addEventListener('click', async () => {
-  try { await api('/api/logout', { method: 'POST' }); } catch (e) { /* ignore */ }
-  showLogin();
-});
-
 /* ---------------- 启动 ---------------- */
 async function boot() {
   applyBase();
@@ -178,6 +172,8 @@ async function enterApp() {
   showApp();
   route();
   await Promise.all([loadTasks(), loadSettings(), loadStats(), loadSystemInfo()]);
+  paintHero();
+  paintThemeBtn();
   connectEvents();
   // 进后台先静默查一次更新，命中 5 分钟缓存时几乎零开销
   setTimeout(() => checkUpdate(false), 1200);
@@ -331,6 +327,7 @@ function renderList(force) {
   if (same) items.forEach(patchRow);
   else { paintList(items); visIds = ids; }
   renderCounts();
+  paintHero();
 }
 
 function renderCounts() {
@@ -348,6 +345,35 @@ function renderCounts() {
   $('#tabActive').textContent = active + queued;
   $('#tabDone').textContent = done;
   $('#tabFail').textContent = fail;
+}
+
+function paintHero() {
+  const greetEl = $('#heroGreet');
+  if (!greetEl) return;
+  const now = new Date();
+  const h = now.getHours();
+  const greet = h < 5 ? '夜深了' : h < 9 ? '早上好' : h < 12 ? '上午好'
+    : h < 14 ? '中午好' : h < 18 ? '下午好' : h < 23 ? '晚上好' : '夜深了';
+  greetEl.textContent = greet;
+  const week = '日一二三四五六'[now.getDay()];
+  $('#heroDate').textContent = (now.getMonth() + 1) + ' 月 ' + now.getDate() + ' 日 · 周' + week;
+  const c = (state.stats && state.stats.counts) || {};
+  const active = (c.running || 0) + (c.merging || 0);
+  const queued = c.queued || 0;
+  const done = c.completed || 0;
+  const fail = (c.failed || 0) + (c.canceled || 0);
+  let sub;
+  if (active || queued) {
+    sub = active ? (active + ' 个任务正在下载') : '队列里有 ' + queued + ' 个任务';
+    if (queued) sub += '，另有 ' + queued + ' 个排队中';
+  } else if (fail) {
+    sub = '有 ' + fail + ' 个任务未完成，点开卡片可以重试或删除';
+  } else if (done) {
+    sub = '已完成 ' + done + ' 个任务，粘贴新链接继续下载';
+  } else {
+    sub = '粘贴一个 m3u8 或 mp4 直链，回车即可开始下载';
+  }
+  $('#heroSub').textContent = sub;
 }
 
 function renderStats() {
@@ -371,11 +397,6 @@ function renderStats() {
 }
 
 /* ---------------- SSE ---------------- */
-function setLive(on) {
-  const p = $('#pillLive');
-  p.classList.toggle('off', !on);
-  $('#liveText').textContent = on ? '实时' : '已断开';
-}
 function scheduleRender() {
   if (renderQueued) return;
   renderQueued = true;
@@ -385,14 +406,13 @@ function connectEvents() {
   if (state.es) state.es.close();
   const es = new EventSource('/api/events');
   state.es = es;
-  es.addEventListener('hello', () => setLive(true));
+  es.addEventListener('hello', () => { /* 连接已就绪 */ });
   es.addEventListener('snapshot', (e) => {
     try {
       const arr = JSON.parse(e.data);
       state.tasks.clear();
       arr.forEach((t) => state.tasks.set(t.id, t));
       renderList(true);
-      setLive(true);
     } catch (err) { /* ignore */ }
   });
   es.addEventListener('task', (e) => {
@@ -418,8 +438,13 @@ function connectEvents() {
       renderList(true);
     } catch (err) { /* ignore */ }
   });
-  es.onopen = () => setLive(true);
-  es.onerror = () => setLive(false);
+  es.addEventListener('update.auto', (e) => {
+    try {
+      const d = JSON.parse(e.data);
+      toast('发现新版本 v' + (d.to || '') + '，正在自动更新…', 'ok');
+      waitRestart();
+    } catch (err) { /* ignore */ }
+  });
 }
 
 /* ---------------- 提交任务 ---------------- */
@@ -450,6 +475,7 @@ $('#submitForm').addEventListener('submit', async (e) => {
     $('#inCookie').value = '';
     renderList(true);
     toast('已加入队列', 'ok');
+    jumpToTask(t.id);
     $('#inUrl').focus({ preventScroll: true });
   } catch (ex) {
     toast(ex.message, 'err');
@@ -457,6 +483,19 @@ $('#submitForm').addEventListener('submit', async (e) => {
     btn.disabled = false; btn.textContent = '下载';
   }
 });
+
+// jumpToTask 回到首页并滚动到新任务，方便确认是否开始下载
+function jumpToTask(id) {
+  if (state.view !== 'home') location.hash = '#/home';
+  const focus = () => {
+    const li = document.getElementById('t-' + id);
+    if (!li) return;
+    li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    li.classList.add('flash');
+    setTimeout(() => li.classList.remove('flash'), 1800);
+  };
+  setTimeout(focus, state.view === 'home' ? 60 : 240);
+}
 
 /* ---------------- 列表操作（事件委托） ---------------- */
 $('#taskList').addEventListener('click', async (e) => {
@@ -641,7 +680,8 @@ const SET = {
 };
 const BOOL = {
   allow_transcode: '#sTranscode', thumbnails: '#sThumbs',
-  keep_temp: '#sKeepTemp', insecure_tls: '#sInsecure'
+  keep_temp: '#sKeepTemp', insecure_tls: '#sInsecure',
+  auto_update: '#sAutoUpdate'
 };
 function numVal(sel) { const v = parseInt($(sel).value, 10); return isNaN(v) ? 0 : v; }
 
@@ -840,7 +880,8 @@ function paintUpdate(st) {
     badge.hidden = false; pill.hidden = false;
     apply.disabled = !st.can_auto;
   } else {
-    status.textContent = '已是最新版本 · ' + (st.platform || '');
+    const auto = !!(state.settings && state.settings.auto_update);
+    status.textContent = '已是最新版本 · ' + (st.platform || '') + (auto ? ' · 自动更新已开启' : '');
     badge.hidden = true; pill.hidden = true; apply.disabled = true;
   }
   const notes = (st.notes || '').trim();
@@ -968,6 +1009,51 @@ if ($('#btnChangePw')) {
   });
 }
 
+/* ---------------- 夜间 / 白天 ---------------- */
+const THEME_KEY = 'ms-theme';
+function currentTheme() {
+  return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+}
+function paintThemeBtn() {
+  const b = $('#btnTheme');
+  if (!b) return;
+  const light = currentTheme() === 'light';
+  b.setAttribute('aria-pressed', String(light));
+  b.setAttribute('aria-label', light ? '切换到夜间模式' : '切换到白天模式');
+  b.title = light ? '切换到夜间模式' : '切换到白天模式';
+  document.documentElement.style.colorScheme = light ? 'light' : 'dark';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', light ? '#f6f7f9' : '#0a0b0d');
+}
+function applyTheme(next) {
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore */ }
+  paintThemeBtn();
+}
+function toggleTheme(ev) {
+  const next = currentTheme() === 'light' ? 'dark' : 'light';
+  const btn = $('#btnTheme');
+  const r = btn ? btn.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
+  const x = ev && ev.clientX ? ev.clientX : r.left + r.width / 2;
+  const y = ev && ev.clientY ? ev.clientY : r.top + r.height / 2;
+  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  const root = document.documentElement;
+  root.style.setProperty('--ripple-x', x + 'px');
+  root.style.setProperty('--ripple-y', y + 'px');
+  root.style.setProperty('--ripple-r', radius + 'px');
+
+  if (document.startViewTransition) {
+    document.startViewTransition(() => applyTheme(next));
+    return;
+  }
+  // 老浏览器：退化为整体颜色渐变
+  root.classList.add('theme-fade');
+  applyTheme(next);
+  setTimeout(() => root.classList.remove('theme-fade'), 420);
+}
+if ($('#btnTheme')) $('#btnTheme').addEventListener('click', toggleTheme);
+paintThemeBtn();
+
 /* ---------------- 文档页 ---------------- */
 function setDoc(d) {
   state.doc = d;
@@ -1008,10 +1094,11 @@ document.addEventListener('click', (e) => {
 function route() {
   const raw = location.hash.replace(/^#\/?/, '');
   const parts = raw.split('/').filter(Boolean);
-  let view = parts[0] || 'tasks';
-  if (['tasks', 'docs', 'settings'].indexOf(view) < 0) view = 'tasks';
+  let view = parts[0] || 'home';
+  if (view === 'tasks') view = 'home'; // 兼容旧链接
+  if (['home', 'docs', 'settings'].indexOf(view) < 0) view = 'home';
   state.view = view;
-  $('#viewTasks').classList.toggle('hidden', view !== 'tasks');
+  $('#viewHome').classList.toggle('hidden', view !== 'home');
   $('#viewDocs').classList.toggle('hidden', view !== 'docs');
   $('#viewSettings').classList.toggle('hidden', view !== 'settings');
   $$('.tabbar a').forEach((a) => {
@@ -1021,7 +1108,7 @@ function route() {
   if (view === 'docs') setDoc(parts[1] === 'mcp' ? 'mcp' : 'api');
   document.title = view === 'docs' ? 'API / MCP 文档 · Media Super'
     : view === 'settings' ? '设置 · Media Super'
-    : '任务 · Media Super';
+    : '首页 · Media Super';
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);

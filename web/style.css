@@ -23,6 +23,9 @@
   --sig: #ffb020;
   --sig-ink: #1c1400;
   --sig-soft: rgba(255, 176, 32, .14);
+  --sig-hover: #ffc046;
+  --code-fg: #cfd6df;
+  --scroll-hover: #3c434c;
 
   --ok: #45d99b;
   --err: #ff6161;
@@ -42,6 +45,33 @@
   --tabbar-h: 58px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
+}
+
+/* ---------- 白天模式：同一套变量，换一套明度 ---------- */
+html[data-theme="light"] {
+  --bg: #f4f6f9;
+  --bg-1: #ffffff;
+  --bg-2: #eef1f6;
+  --bg-3: #e4e9f0;
+
+  --line: #e0e6ee;
+  --line-2: #c9d2de;
+
+  --fg: #151a21;
+  --fg-dim: #4b5563;
+  --fg-mute: #6b7481;
+
+  --sig: #b26a00;
+  --sig-ink: #fff8ec;
+  --sig-soft: rgba(178, 106, 0, .12);
+  --sig-hover: #c17600;
+
+  --ok: #0f9d63;
+  --err: #d92d20;
+  --info: #1668d6;
+
+  --code-fg: #2b3440;
+  --scroll-hover: #a9b4c2;
 }
 
 * { box-sizing: border-box; }
@@ -84,7 +114,7 @@ body {
   border-radius: 99px;
   border: 3px solid var(--bg);
 }
-::-webkit-scrollbar-thumb:hover { background: #3c434c; }
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-hover); }
 
 a { color: var(--info); text-decoration: underline; text-underline-offset: 3px; }
 
@@ -145,17 +175,17 @@ h1, h2, h3, h4 { margin: 0; font-weight: 640; letter-spacing: -.018em; }
   min-height: 52px;
 }
 .brand {
-  display: flex; align-items: center; gap: 9px;
-  font-weight: 680; font-size: 16px; letter-spacing: -.02em;
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 650; font-size: 13.5px; letter-spacing: -.005em;
 }
-.brand svg { width: 22px; height: 22px; display: block; color: var(--sig); }
+.brand svg { width: 18px; height: 18px; display: block; color: var(--sig); }
 .brand .ver {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 9.5px;
   color: var(--fg-mute);
   border: 1px solid var(--line-2);
   border-radius: 5px;
-  padding: 1px 5px;
+  padding: 0 4px;
   letter-spacing: 0;
 }
 .spacer { flex: 1; }
@@ -285,7 +315,7 @@ button.primary {
   color: var(--sig-ink);
   font-weight: 640;
 }
-button.primary:hover:not(:disabled) { background: #ffc046; border-color: #ffc046; }
+button.primary:hover:not(:disabled) { background: var(--sig-hover); border-color: var(--sig-hover); }
 
 button.ghost {
   background: transparent;
@@ -625,7 +655,7 @@ button.sm { min-height: 36px; padding: 0 11px; font-size: 13px; }
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.6;
-  color: #cfd6df;
+  color: var(--code-fg);
   tab-size: 2;
 }
 .code .copy {
@@ -1053,7 +1083,7 @@ details.tool .tbody { padding: 11px 12px; }
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
-  background: var(--bg-0, #07080a);
+  background: var(--bg);
   color: var(--fg-dim);
   font-family: var(--mono);
   font-size: 12px;
@@ -1068,3 +1098,95 @@ details.tool .tbody { padding: 11px 12px; }
 .upd-pill b { color: var(--sig); }
 .upd-pill:hover b { text-decoration: underline; }
 .upd-pill[hidden] { display: none; }
+
+/* ============================================================
+   首页欢迎区
+   ============================================================ */
+.hero {
+  padding: 2px 2px 16px;
+}
+.hero-date {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--fg-mute);
+  letter-spacing: .03em;
+  font-variant-numeric: tabular-nums;
+}
+.hero-greet {
+  font-size: 30px;
+  line-height: 1.12;
+  letter-spacing: -.035em;
+  font-weight: 700;
+}
+.hero-greet .hero-dot { color: var(--sig); }
+.hero-sub {
+  margin: 9px 0 0;
+  font-size: 13px;
+  color: var(--fg-dim);
+  line-height: 1.5;
+}
+
+/* ============================================================
+   夜间 / 白天切换（圆形水波扩散）
+   ============================================================ */
+.theme-btn { position: relative; }
+.theme-btn svg {
+  width: 19px; height: 19px;
+  transition: transform .45s var(--ease), opacity .25s var(--ease);
+}
+.theme-btn:active svg { transform: scale(.86); }
+.theme-btn .ico-moon { display: none; }
+html[data-theme="light"] .theme-btn .ico-sun { display: none; }
+html[data-theme="light"] .theme-btn .ico-moon { display: block; }
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) {
+  z-index: 2;
+  animation: ms-theme-ripple .58s var(--ease) both;
+}
+@keyframes ms-theme-ripple {
+  from { clip-path: circle(0 at var(--ripple-x, 50%) var(--ripple-y, 50%)); }
+  to   { clip-path: circle(var(--ripple-r, 150vmax) at var(--ripple-x, 50%) var(--ripple-y, 50%)); }
+}
+
+/* 不支持 View Transitions 时的降级：整体颜色渐变 */
+html.theme-fade,
+html.theme-fade body,
+html.theme-fade * {
+  transition: background-color .36s ease, color .36s ease, border-color .36s ease;
+}
+
+/* ============================================================
+   提交后定位到新任务
+   ============================================================ */
+.task.flash {
+  border-color: var(--sig);
+  animation: ms-task-flash 1.7s var(--ease);
+}
+@keyframes ms-task-flash {
+  0%   { box-shadow: 0 0 0 0 var(--sig-soft); }
+  25%  { box-shadow: 0 0 0 4px var(--sig-soft); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* ============================================================
+   整体缩小 10%
+   只缩放内容容器：zoom 作用在 position:fixed 元素上会留白，
+   所以顶栏内部、主区、登录卡片、底部导航项、弹层分别缩放。
+   ============================================================ */
+.app-bar-in {
+  zoom: .9;
+  max-width: calc(1180px / .9);
+}
+main {
+  zoom: .9;
+  max-width: calc(1180px / .9);
+}
+.login-card { zoom: .9; }
+.tabbar a { zoom: .9; }
+.sheet { zoom: .9; }

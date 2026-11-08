@@ -845,6 +845,19 @@ func dirExists(p string) bool {
 	return err == nil && fi.IsDir()
 }
 
+// Idle 返回当前是否处于空闲状态（没有进行中或排队的任务）。
+// 自动更新只在空闲时执行，避免升级重启打断下载。
+func (m *Manager) Idle() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, t := range m.tasks {
+		if isActiveStatus(t.Status) || t.Status == StatusQueued {
+			return false
+		}
+	}
+	return true
+}
+
 // FFmpeg 返回 ffmpeg 是否可用及版本信息。
 func (m *Manager) FFmpeg() (bool, string) {
 	m.mu.Lock()

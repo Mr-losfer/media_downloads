@@ -9,7 +9,7 @@ import "strings"
 
 var (
 	// Version 语义化版本号，例如 2.1.0
-	Version = "2.3.0"
+	Version = "2.4.0"
 	// Commit 构建时的提交号（短哈希）
 	Commit = "dev"
 	// BuildTime 构建时间（RFC3339）

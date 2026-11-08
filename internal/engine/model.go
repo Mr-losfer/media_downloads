@@ -91,6 +91,7 @@ type Settings struct {
 	KeepTemp        bool      `json:"keep_temp"`
 	Thumbnails      bool      `json:"thumbnails"`
 	AutoCleanDays   int       `json:"auto_clean_days"`
+	AutoUpdate      bool      `json:"auto_update"` // 开启后每 2 小时检查，空闲时自动升级
 	WebhookURL      string    `json:"webhook_url"`
 	WebhookSecret   string    `json:"webhook_secret"`
 	WebhookProgress bool      `json:"webhook_progress"`

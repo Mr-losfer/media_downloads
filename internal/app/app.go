@@ -117,6 +117,9 @@ func Run(opt Options) error {
 
 	up := updater.New(opt.DataDir, version.Repo)
 	srv := server.NewServer(m, server.NewAuth(apiKey, passHash, secret), server.LoadWebAssets(web.FS), up)
+	if !opt.DisableUpdateCheck {
+		srv.StartAutoUpdate()
+	}
 
 	httpSrv := &http.Server{
 		Addr:              opt.Addr,
