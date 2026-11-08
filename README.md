@@ -9,6 +9,8 @@ https://github.com/losfer778/media_downloads
 
 当前版本见 [version.json](version.json)，历史构建见 [docs/RELEASES.md](docs/RELEASES.md)。
 
+版本号规则：`主.次.补丁`，补丁位 0→9 逐次加一（2.5.1、2.5.2 …），到 9 之后进位到次版本（2.6.0），不跳号。
+
 ## 为什么是它
 
 - **轻**：`CGO_ENABLED=0` 静态编译，成品约 7MB；无 Node、无 Python、无数据库服务。

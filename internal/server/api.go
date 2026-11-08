@@ -471,6 +471,9 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", f.ctype)
 		if name == "index.html" {
 			w.Header().Set("Cache-Control", "no-cache")
+		} else if r.URL.Query().Get("v") != "" {
+			// 带 ?v=版本号 的资源每次发版都会换 URL，可以放心长缓存
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		} else {
 			w.Header().Set("Cache-Control", "public, max-age=300")
 		}

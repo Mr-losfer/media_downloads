@@ -1092,16 +1092,18 @@ document.addEventListener('click', (e) => {
 
 /* ---------------- 路由 ---------------- */
 const VIEWS = ['home', 'tasks', 'docs', 'settings'];
+// 页面区块可能因缓存出现「新 JS + 旧 HTML」的组合，取不到就回退首页，别让整页卡死
+function viewEl(v) { return document.getElementById('view' + v.charAt(0).toUpperCase() + v.slice(1)); }
 function route() {
   const raw = location.hash.replace(/^#\/?/, '');
   const parts = raw.split('/').filter(Boolean);
   let view = parts[0] || 'home';
-  if (VIEWS.indexOf(view) < 0) view = 'home';
+  if (VIEWS.indexOf(view) < 0 || !viewEl(view)) view = 'home';
   state.view = view;
-  $('#viewHome').classList.toggle('hidden', view !== 'home');
-  $('#viewTasks').classList.toggle('hidden', view !== 'tasks');
-  $('#viewDocs').classList.toggle('hidden', view !== 'docs');
-  $('#viewSettings').classList.toggle('hidden', view !== 'settings');
+  VIEWS.forEach((v) => {
+    const el = viewEl(v);
+    if (el) el.classList.toggle('hidden', v !== view);
+  });
   $$('.tabbar a').forEach((a) => {
     if (a.dataset.view === view) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
@@ -1114,6 +1116,10 @@ function route() {
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
+// hash 相同不会触发 hashchange（比如上次渲染失败停在首页），点导航时兜底重绘一次
+$$('.tabbar a').forEach((a) => a.addEventListener('click', () => setTimeout(route, 0)));
+// 从浏览器往返缓存恢复时也重绘，避免看到过期的页面状态
+window.addEventListener('pageshow', (e) => { if (e.persisted) route(); });
 
 /* ---------------- 初始化 ---------------- */
 $$('[data-copy]').forEach((b) => { b.innerHTML = ico('copy'); });
