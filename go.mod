@@ -1,4 +1,4 @@
-module vidfetch
+module mediasuper
 
 go 1.24
 

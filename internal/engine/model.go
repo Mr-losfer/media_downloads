@@ -1,4 +1,4 @@
-package main
+package engine
 
 import (
 	"strings"
@@ -123,9 +123,9 @@ var allowedPresets = map[string]bool{
 	"fast": true, "medium": true, "slow": true, "slower": true, "veryslow": true,
 }
 
-// sanitize 把任何来源（API / MCP / 配置文件）的设置夹到安全范围，
+// Sanitize 把任何来源（API / MCP / 配置文件）的设置夹到安全范围，
 // 防止有人写 SegConns=5000 把 NAS 打爆。
-func (s *Settings) sanitize() {
+func (s *Settings) Sanitize() {
 	s.MaxTasks = clampInt(s.MaxTasks, 1, 8)
 	s.SegConns = clampInt(s.SegConns, 1, 32)
 	s.SpeedLimitKB = clampInt(s.SpeedLimitKB, 0, 1048576)

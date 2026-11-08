@@ -1,5 +1,5 @@
 /* ============================================================
-   VidFetch UI · 控制台式设计系统
+   Media Super UI · 控制台式设计系统
    - 移动优先，触控目标 ≥44px，间距 ≥8px
    - 单一信号色（琥珀）表达「活动」，语义绿/红只表达结果
    - 浏览器原生表面（选区/光标/滚动条/焦点环）也纳入配色
@@ -1004,3 +1004,67 @@ details.tool .tbody { padding: 11px 12px; }
   }
   .task { animation: none; }
 }
+
+/* ---------------- 系统更新 / 管理员密码 ---------------- */
+
+.ver-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 4px 0 14px;
+}
+.ver-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-1);
+  min-width: 0;
+}
+.ver-item .mono {
+  font-size: 13px;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.upd-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.badge-ver {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--sig);
+  background: var(--sig-soft);
+  vertical-align: middle;
+}
+.notes-pre {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-0, #07080a);
+  color: var(--fg-dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow: auto;
+}
+.upd-pill { cursor: pointer; color: var(--sig); }
+.upd-pill i { background: var(--sig); box-shadow: 0 0 0 3px var(--sig-soft); }
+.upd-pill b { color: var(--sig); }
+.upd-pill:hover b { text-decoration: underline; }
+.upd-pill[hidden] { display: none; }

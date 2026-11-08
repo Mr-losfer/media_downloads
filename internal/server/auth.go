@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"crypto/hmac"
@@ -12,23 +12,48 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const (
-	cookieName  = "vf_session"
+	cookieName  = "ms_session"
 	sessionLife = 7 * 24 * time.Hour
 	pbkdf2Iter  = 120000 // 单次登录可接受，暴力破解成本高
 )
 
 type Auth struct {
-	apiKey   string
+	apiKey string
+	secret []byte
+
+	mu       sync.RWMutex
 	passHash string // "" 表示还没设密码
-	secret   []byte
 }
 
-func newAuth(apiKey, passHash string, secret []byte) *Auth {
+func NewAuth(apiKey, passHash string, secret []byte) *Auth {
 	return &Auth{apiKey: apiKey, passHash: passHash, secret: secret}
+}
+
+// PassHash 返回当前密码哈希（只读，给持久化用）。
+func (a *Auth) PassHash() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.passHash
+}
+
+// SetPassHash 在内存里换掉密码哈希；磁盘持久化由调用方负责。
+func (a *Auth) SetPassHash(h string) {
+	a.mu.Lock()
+	a.passHash = h
+	a.mu.Unlock()
+}
+
+// CheckPassword 校验明文密码，未设置密码时一律失败。
+func (a *Auth) CheckPassword(pw string) bool {
+	a.mu.RLock()
+	h := a.passHash
+	a.mu.RUnlock()
+	return h != "" && verifyPassword(pw, h)
 }
 
 func randomHex(n int) string {
@@ -39,7 +64,7 @@ func randomHex(n int) string {
 	return hex.EncodeToString(b)
 }
 
-func hashPassword(pw string) (string, error) {
+func HashPassword(pw string) (string, error) {
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err

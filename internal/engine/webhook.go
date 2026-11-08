@@ -1,4 +1,4 @@
-package main
+package engine
 
 import (
 	"bytes"
@@ -10,6 +10,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"mediasuper/internal/version"
 )
 
 // fireWebhook 把任务事件异步推给用户配置的地址。
@@ -41,7 +43,7 @@ func (m *Manager) fireWebhook(event string, t *Task) {
 				return
 			}
 			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("User-Agent", "vidfetch/"+appVersion)
+			req.Header.Set("User-Agent", version.Name+"/"+version.Version)
 			req.Header.Set("X-VF-Event", event)
 			if secret != "" {
 				mac := hmac.New(sha256.New, []byte(secret))

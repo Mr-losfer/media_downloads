@@ -1,10 +1,14 @@
+# Media Super · 单容器部署（直接拉取 GitHub Container Registry 镜像）
+#
+#   docker compose up -d
+#   docker compose logs -f
+#
+# 需要改保存目录时，把宿主机路径填到 DOWNLOAD_DIR：
+#   DOWNLOAD_DIR=/vol1/1000/影视 docker compose up -d
 services:
-  vidfetch:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: vidfetch:1.1.0
-    container_name: vidfetch
+  mediasuper:
+    image: ghcr.io/losfer778/media-super:latest
+    container_name: mediasuper
     restart: unless-stopped
 
     ports:
@@ -12,22 +16,23 @@ services:
 
     environment:
       TZ: Asia/Shanghai
-      # 后台登录密码（首次启动写入数据库，之后改这里需要删 data 卷或进容器改）
-      VF_ADMIN_PASS: "${VF_ADMIN_PASS:-vidfetch123}"
-      # 保存目录：路径:标签，逗号分隔
-      VF_SAVE_DIRS: "/downloads/hdd:硬盘,/downloads/vol1:系统盘"
-      VF_DEFAULT_DIR: /downloads/hdd
+      # 首次启动使用的管理员密码（默认 losfer），登录后请到「设置 → 管理员密码」修改
+      MS_ADMIN_PASS: "${MS_ADMIN_PASS:-losfer}"
+      # 保存目录：容器内路径:显示名，多个用逗号分隔
+      MS_SAVE_DIRS: "${MS_SAVE_DIRS:-/downloads:下载}"
+      MS_DEFAULT_DIR: "${MS_DEFAULT_DIR:-/downloads}"
       # 低配默认：2 个任务 × 8 连接 = 最多 16 个并发连接
-      VF_MAX_TASKS: "2"
-      VF_SEG_CONNS: "8"
-      VF_SPEED_LIMIT_KB: "0"
-      VF_FFMPEG: /usr/bin/ffmpeg
-      VF_WEBHOOK_URL: ""
+      MS_MAX_TASKS: "2"
+      MS_SEG_CONNS: "8"
+      MS_SPEED_LIMIT_KB: "0"
+      MS_FFMPEG: /usr/bin/ffmpeg
+      MS_WEBHOOK_URL: ""
 
     volumes:
+      # 数据库 / 临时分片 / 一键更新下载的新版本都在这里，别删
       - ./data:/data
-      - /vol00/HSH721414ALN6M0/视频下载:/downloads/hdd
-      - ./downloads:/downloads/vol1
+      # 宿主机下载目录 → 容器内 /downloads
+      - "${DOWNLOAD_DIR:-./downloads}:/downloads"
 
     # ---- 低配保护：这四项是关键 ----
     mem_limit: 512m

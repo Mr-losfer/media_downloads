@@ -1,4 +1,4 @@
-package main
+package engine
 
 import (
 	"encoding/json"
@@ -22,7 +22,7 @@ type Store struct {
 	db *bolt.DB
 }
 
-func openStore(path string) (*Store, error) {
+func OpenStore(path string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func openStore(path string) (*Store, error) {
 
 func (s *Store) Close() error { return s.db.Close() }
 
-func (s *Store) putTask(t *Task) error {
+func (s *Store) PutTask(t *Task) error {
 	b, err := json.Marshal(t)
 	if err != nil {
 		return err
@@ -60,13 +60,13 @@ func (s *Store) putTask(t *Task) error {
 	})
 }
 
-func (s *Store) delTask(id string) error {
+func (s *Store) DelTask(id string) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(bucketTasks).Delete([]byte(id))
 	})
 }
 
-func (s *Store) allTasks() ([]*Task, error) {
+func (s *Store) AllTasks() ([]*Task, error) {
 	var out []*Task
 	err := s.db.View(func(tx *bolt.Tx) error {
 		return tx.Bucket(bucketTasks).ForEach(func(k, v []byte) error {
@@ -90,7 +90,7 @@ func (s *Store) allTasks() ([]*Task, error) {
 	return out, nil
 }
 
-func (s *Store) metaGet(key string) string {
+func (s *Store) MetaGet(key string) string {
 	var v string
 	_ = s.db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucketMeta).Get([]byte(key)); b != nil {
@@ -101,15 +101,15 @@ func (s *Store) metaGet(key string) string {
 	return v
 }
 
-func (s *Store) metaPut(key, val string) error {
+func (s *Store) MetaPut(key, val string) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(bucketMeta).Put([]byte(key), []byte(val))
 	})
 }
 
-func (s *Store) loadSettings() (Settings, error) {
+func (s *Store) LoadSettings() (Settings, error) {
 	st := defaultSettings()
-	raw := s.metaGet("settings")
+	raw := s.MetaGet("settings")
 	if raw == "" {
 		return st, nil
 	}
@@ -119,10 +119,10 @@ func (s *Store) loadSettings() (Settings, error) {
 	return st, nil
 }
 
-func (s *Store) saveSettings(st Settings) error {
+func (s *Store) SaveSettings(st Settings) error {
 	b, err := json.Marshal(st)
 	if err != nil {
 		return err
 	}
-	return s.metaPut("settings", string(b))
+	return s.MetaPut("settings", string(b))
 }

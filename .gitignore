@@ -1,10 +1,20 @@
-vidfetch
-vidfetch-*
-*.log
-data/
-_test/
-_toolchain/
-.DS_Store
-downloads/
+# 构建产物
+/mediasuper
+/mediasuper-*
+/dist/
+/build/
+*.fpk
+*.tar.gz
+*.sha256
+
+# 运行数据
+/data/
+/downloads/
+*.db
+*.db.lock
+
+# 环境与系统文件
 .env
 *.env
+*.log
+.DS_Store

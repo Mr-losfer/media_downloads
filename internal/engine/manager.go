@@ -1,4 +1,4 @@
-package main
+package engine
 
 import (
 	"context"
@@ -15,9 +15,15 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"mediasuper/internal/version"
 )
 
-var errNotFound = errors.New("任务不存在")
+var (
+	errNotFound = errors.New("任务不存在")
+	// ErrNotFound 供 server 包判断「任务不存在」
+	ErrNotFound = errNotFound
+)
 
 const maxTasksStored = 20000
 
@@ -114,7 +120,7 @@ func NewManager(db *Store, st Settings, dataDir string) *Manager {
 	m.client = newHTTPClient(st, st.SegConns)
 	m.lim = newLimiter(int64(st.SpeedLimitKB) * 1024)
 
-	list, err := db.allTasks()
+	list, err := db.AllTasks()
 	if err != nil {
 		log.Printf("读取历史任务失败: %v", err)
 	}
@@ -228,7 +234,7 @@ func (m *Manager) tick() {
 	m.mu.Unlock()
 
 	for _, t := range toSave {
-		if err := m.db.putTask(t); err != nil {
+		if err := m.db.PutTask(t); err != nil {
 			log.Printf("持久化任务失败: %v", err)
 		}
 	}
@@ -313,7 +319,7 @@ func (m *Manager) run(t *Task) {
 	if snapshot == nil {
 		return
 	}
-	if err := m.db.putTask(snapshot); err != nil {
+	if err := m.db.PutTask(snapshot); err != nil {
 		log.Printf("持久化任务失败: %v", err)
 	}
 	m.hub.Broadcast("task", snapshot)
@@ -484,7 +490,7 @@ func (m *Manager) Add(in TaskInput) (*Task, error) {
 	snap := t.clone()
 	m.mu.Unlock()
 
-	if err := m.db.putTask(snap); err != nil {
+	if err := m.db.PutTask(snap); err != nil {
 		return nil, err
 	}
 	m.hub.Broadcast("task", snap)
@@ -576,7 +582,7 @@ func (m *Manager) Cancel(id string) error {
 	snap := t.clone()
 	m.mu.Unlock()
 
-	_ = m.db.putTask(snap)
+	_ = m.db.PutTask(snap)
 	m.hub.Broadcast("task", snap)
 	m.fireWebhook("task.canceled", snap)
 	return nil
@@ -607,7 +613,7 @@ func (m *Manager) Retry(id string) (*Task, error) {
 	snap := t.clone()
 	m.mu.Unlock()
 
-	_ = m.db.putTask(snap)
+	_ = m.db.PutTask(snap)
 	m.hub.Broadcast("task", snap)
 	return snap, nil
 }
@@ -630,7 +636,7 @@ func (m *Manager) Delete(id string, withFile bool) error {
 	delete(m.saved, id)
 	m.mu.Unlock()
 
-	if err := m.db.delTask(id); err != nil {
+	if err := m.db.DelTask(id); err != nil {
 		return err
 	}
 	if withFile && path != "" && isCompleted {
@@ -688,7 +694,7 @@ func (m *Manager) Rename(id, name string) (*Task, error) {
 	m.mu.Lock()
 	snap := m.tasks[id].clone()
 	m.mu.Unlock()
-	_ = m.db.putTask(snap)
+	_ = m.db.PutTask(snap)
 	m.hub.Broadcast("task", snap)
 	return snap, nil
 }
@@ -725,7 +731,7 @@ func (m *Manager) makeThumb(id string) {
 	m.mu.Unlock()
 
 	if snap != nil {
-		_ = m.db.putTask(snap)
+		_ = m.db.PutTask(snap)
 		m.hub.Broadcast("task", snap)
 	}
 }
@@ -778,7 +784,7 @@ func (m *Manager) Stats() map[string]any {
 	m.mu.Unlock()
 
 	return map[string]any{
-		"version":         appVersion,
+		"version":         version.Version,
 		"tasks":           n,
 		"counts":          counts,
 		"completed_bytes": totalSize,
@@ -799,7 +805,7 @@ func (m *Manager) Settings() Settings {
 }
 
 func (m *Manager) UpdateSettings(in Settings) (Settings, error) {
-	in.sanitize()
+	in.Sanitize()
 	for _, d := range in.SaveDirs {
 		if err := os.MkdirAll(d.Path, 0o755); err != nil {
 			return m.Settings(), fmt.Errorf("目录不可用 %s: %w", d.Path, err)
@@ -818,7 +824,7 @@ func (m *Manager) UpdateSettings(in Settings) (Settings, error) {
 	st := in
 	m.mu.Unlock()
 
-	if err := m.db.saveSettings(in); err != nil {
+	if err := m.db.SaveSettings(in); err != nil {
 		return st, err
 	}
 	log.Printf("设置已更新: 并发任务=%d 分片连接=%d 限速=%dKB/s", in.MaxTasks, in.SegConns, in.SpeedLimitKB)
@@ -838,3 +844,43 @@ func dirExists(p string) bool {
 	fi, err := os.Stat(p)
 	return err == nil && fi.IsDir()
 }
+
+// FFmpeg 返回 ffmpeg 是否可用及版本信息。
+func (m *Manager) FFmpeg() (bool, string) {
+	m.mu.Lock()
+	ff := m.ff
+	m.mu.Unlock()
+	ver, ok := ff.Available()
+	return ok, ver
+}
+
+// ---------- 对外暴露的少量桥接方法（server 包用） ----------
+
+// Subscribe 订阅 SSE 事件流。
+func (m *Manager) Subscribe() (chan []byte, int) { return m.hub.subscribe() }
+
+// Unsubscribe 取消订阅。
+func (m *Manager) Unsubscribe(ch chan []byte) { m.hub.unsubscribe(ch) }
+
+// Broadcast 手动播一条事件（例如 shutdown）。
+func (m *Manager) Broadcast(event string, data any) { m.hub.Broadcast(event, data) }
+
+// EnsureThumb 异步补一张缩略图，已有则跳过。
+func (m *Manager) EnsureThumb(id string) {
+	if t, ok := m.Get(id); ok && t.HasThumb {
+		return
+	}
+	go m.makeThumb(id)
+}
+
+// SetPasswordHash 把新的密码哈希写进数据库。
+func (m *Manager) SetPasswordHash(h string) error { return m.db.MetaPut("pass_hash", h) }
+
+// MetaGet 读一条 meta 记录（启动初始化用）。
+func (m *Manager) MetaGet(key string) string { return m.db.MetaGet(key) }
+
+// MetaPut 写一条 meta 记录。
+func (m *Manager) MetaPut(key, val string) error { return m.db.MetaPut(key, val) }
+
+// DataDir 返回运行数据目录（临时分片、待安装更新都放这里）。
+func (m *Manager) DataDir() string { return m.dataDir }

@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================
-   VidFetch 管理端
+   Media Super 管理端
    - 原生 JS，零依赖，全部逻辑内联在二进制里
    - 列表用 keyed patch，SSE 推来的进度只改变动节点，不整表重绘
    - 移动端优先：底部导航、底部抽屉、44px 触控目标
@@ -177,8 +177,10 @@ async function enterApp() {
   $('#verLabel').textContent = 'v' + (me.version || '');
   showApp();
   route();
-  await Promise.all([loadTasks(), loadSettings(), loadStats()]);
+  await Promise.all([loadTasks(), loadSettings(), loadStats(), loadSystemInfo()]);
   connectEvents();
+  // 进后台先静默查一次更新，命中 5 分钟缓存时几乎零开销
+  setTimeout(() => { if (state.view === 'tasks') checkUpdate(false); }, 1200);
   $('#inUrl').focus({ preventScroll: true });
 }
 
@@ -803,6 +805,169 @@ $('#btnCopyKey').addEventListener('click', () => {
   copyText(k).then(() => toast('API Key 已复制', 'ok')).catch(() => toast('复制失败', 'err'));
 });
 
+
+/* ---------------- 系统更新 ---------------- */
+state.sys = null;
+state.update = null;
+
+async function loadSystemInfo() {
+  try {
+    const d = await api('/api/system/info');
+    state.sys = d;
+    if ($('#curVer')) $('#curVer').textContent = 'v' + d.version;
+    if ($('#sysPlatform')) $('#sysPlatform').textContent = d.platform || (d.os + '/' + d.arch);
+  } catch (e) { /* 静默：不影响主流程 */ }
+}
+
+function paintUpdate(st) {
+  state.update = st;
+  const badge = $('#updBadge'), pill = $('#pillUpdate'), apply = $('#btnApplyUpdate'), status = $('#updStatus');
+  if (!status) return;
+  if (st.current && $('#curVer')) $('#curVer').textContent = 'v' + st.current;
+  $('#latestVer').textContent = st.latest ? 'v' + st.latest : '—';
+  $('#updSource').textContent = st.source === 'gh-proxy' ? 'gh-proxy 代理'
+    : st.source === 'direct' ? 'GitHub 直连' : '—';
+
+  if (st.error) {
+    status.textContent = '检查失败：' + st.error;
+    badge.hidden = true; pill.hidden = true; apply.disabled = true;
+    return;
+  }
+  if (st.has_update) {
+    status.textContent = st.can_auto
+      ? '发现新版本 v' + st.latest + '，可以一键更新'
+      : '发现新版本 v' + st.latest + '，但当前架构没有可用的自动更新包';
+    badge.hidden = false; pill.hidden = false;
+    apply.disabled = !st.can_auto;
+  } else {
+    status.textContent = '已是最新版本 · ' + (st.platform || '');
+    badge.hidden = true; pill.hidden = true; apply.disabled = true;
+  }
+  const notes = (st.notes || '').trim();
+  const wrap = $('#updNotesWrap');
+  if (wrap) wrap.hidden = !notes;
+  if (notes && $('#updNotes')) $('#updNotes').textContent = notes;
+}
+
+async function checkUpdate(force) {
+  const btn = $('#btnCheckUpdate');
+  if (!btn) return;
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = '检查中…';
+  try {
+    const st = await api('/api/system/update' + (force ? '?force=1' : ''));
+    paintUpdate(st);
+    if (force) toast(st.error ? ('检查失败：' + st.error) : (st.has_update ? ('发现新版本 v' + st.latest) : '已是最新版本'), st.error ? 'err' : 'ok');
+  } catch (e) {
+    toast('检查更新失败：' + e.message, 'err');
+    if ($('#updStatus')) $('#updStatus').textContent = '检查失败：' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+
+function askUpdate(st) {
+  return new Promise((resolve) => {
+    const sheet = openSheet(
+      '<h3>更新到 v' + esc(st.latest) + '</h3>' +
+      '<p class="hint" style="margin:0 0 12px">' +
+        '将从 GitHub Releases 下载 <span class="mono">' + esc(st.asset_name || '') + '</span>' +
+        (st.asset_size ? '（' + fmtBytes(st.asset_size) + '）' : '') +
+        '，校验 SHA256 后自动重启。下载期间下载任务会暂停，重启后自动恢复队列。' +
+      '</p>' +
+      '<div class="sheet-actions">' +
+        '<button class="ghost" data-x="cancel">取消</button>' +
+        '<span class="spacer"></span>' +
+        '<button class="primary" data-x="ok">立即更新</button>' +
+      '</div>'
+    );
+    let done = false;
+    sheet.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-x]');
+      if (!b) return;
+      done = true;
+      closeSheet();
+      resolve(b.dataset.x === 'ok');
+    });
+    const obs = new MutationObserver(() => {
+      if (!document.body.contains(sheet) && !done) { done = true; obs.disconnect(); resolve(false); }
+    });
+    obs.observe(document.body, { childList: true });
+  });
+}
+
+async function applyUpdate() {
+  const st = state.update;
+  if (!st || !st.has_update) { toast('当前已是最新版本', 'err'); return; }
+  if (!(await askUpdate(st))) return;
+  const btn = $('#btnApplyUpdate');
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = '下载中…';
+  $('#updStatus').textContent = '正在下载并校验更新包，请勿关闭页面…';
+  try {
+    const r = await api('/api/system/update', { method: 'POST' });
+    toast(r.message || '更新完成，正在重启', 'ok');
+    $('#updStatus').textContent = r.restarting ? '服务正在重启，稍候…' : (r.message || '');
+    if (r.restarting) waitRestart();
+    else { btn.disabled = false; btn.textContent = label; }
+  } catch (e) {
+    toast(e.message, 'err');
+    $('#updStatus').textContent = e.message;
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+
+async function waitRestart() {
+  const before = (state.sys && state.sys.version) || (state.update && state.update.current) || '';
+  for (let i = 0; i < 60; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    try {
+      const r = await fetch('/api/health', { cache: 'no-store' });
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (d.version && d.version !== before) { location.reload(); return; }
+    } catch (e) { /* 还没起来 */ }
+  }
+  toast('重启时间较长，请手动刷新页面', 'err');
+  const btn = $('#btnApplyUpdate');
+  if (btn) { btn.disabled = false; btn.textContent = '一键更新'; }
+}
+
+if ($('#btnCheckUpdate')) $('#btnCheckUpdate').addEventListener('click', () => checkUpdate(true));
+if ($('#btnApplyUpdate')) $('#btnApplyUpdate').addEventListener('click', () => applyUpdate());
+if ($('#pillUpdate')) {
+  const go = () => { location.hash = '#/settings'; checkUpdate(true); };
+  $('#pillUpdate').addEventListener('click', go);
+  $('#pillUpdate').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+}
+
+/* ---------------- 管理员密码 ---------------- */
+if ($('#btnChangePw')) {
+  $('#btnChangePw').addEventListener('click', async () => {
+    const oldP = $('#pwOld').value;
+    const n1 = $('#pwNew').value;
+    const n2 = $('#pwNew2').value;
+    if (!oldP) return toast('请输入当前密码', 'err');
+    if (n1.length < 6) return toast('新密码至少 6 位', 'err');
+    if (n1 !== n2) return toast('两次输入的新密码不一致', 'err');
+    const btn = $('#btnChangePw');
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = '提交中…';
+    try {
+      const r = await api('/api/system/password', {
+        method: 'POST',
+        body: { old_password: oldP, new_password: n1 }
+      });
+      toast(r.message || '密码已更新', 'ok');
+      $('#pwOld').value = ''; $('#pwNew').value = ''; $('#pwNew2').value = '';
+    } catch (e) {
+      toast(e.message, 'err');
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
+  });
+}
+
 /* ---------------- 文档页 ---------------- */
 function setDoc(d) {
   state.doc = d;
@@ -854,9 +1019,9 @@ function route() {
     else a.removeAttribute('aria-current');
   });
   if (view === 'docs') setDoc(parts[1] === 'mcp' ? 'mcp' : 'api');
-  document.title = view === 'docs' ? 'API / MCP 文档 · VidFetch'
-    : view === 'settings' ? '设置 · VidFetch'
-    : '任务 · VidFetch';
+  document.title = view === 'docs' ? 'API / MCP 文档 · Media Super'
+    : view === 'settings' ? '设置 · Media Super'
+    : '任务 · Media Super';
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);

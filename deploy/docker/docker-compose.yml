@@ -1,0 +1,55 @@
+# Media Super · 从源码构建（本地改代码后调试用）
+#
+#   docker compose -f deploy/docker/docker-compose.yml up -d --build
+#
+# 只需要拉取官方镜像的话，用仓库根目录的 docker-compose.yml。
+services:
+  mediasuper:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        VERSION: "${MS_VERSION:-dev}"
+    image: mediasuper:dev
+    container_name: mediasuper
+    restart: unless-stopped
+
+    ports:
+      - "9099:8080"
+
+    environment:
+      TZ: Asia/Shanghai
+      MS_ADMIN_PASS: "${MS_ADMIN_PASS:-losfer}"
+      MS_SAVE_DIRS: "/downloads:下载"
+      MS_DEFAULT_DIR: /downloads
+      MS_MAX_TASKS: "2"
+      MS_SEG_CONNS: "8"
+      MS_SPEED_LIMIT_KB: "0"
+      MS_FFMPEG: /usr/bin/ffmpeg
+
+    volumes:
+      - ./data:/data
+      - "${DOWNLOAD_DIR:-../../downloads}:/downloads"
+
+    mem_limit: 512m
+    memswap_limit: 768m
+    cpus: 1.0
+    pids_limit: 256
+
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 8192
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/health"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

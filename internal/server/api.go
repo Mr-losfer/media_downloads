@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"encoding/json"
@@ -13,24 +13,34 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"mediasuper/internal/engine"
+	"mediasuper/internal/updater"
+	"mediasuper/internal/version"
 )
 
-type staticFile struct {
-	data  []byte
-	ctype string
-}
-
+// Server 承载所有 HTTP 路由。
 type Server struct {
-	m    *Manager
+	m    *engine.Manager
 	auth *Auth
 	web  map[string]staticFile
+	up   *updater.Manager
+
+	startedAt time.Time
 
 	lgMu  sync.Mutex
 	lgMap map[string][]int64
 }
 
-func NewServer(m *Manager, auth *Auth, web map[string]staticFile) *Server {
-	return &Server{m: m, auth: auth, web: web, lgMap: make(map[string][]int64)}
+func NewServer(m *engine.Manager, auth *Auth, web map[string]staticFile, up *updater.Manager) *Server {
+	return &Server{
+		m:         m,
+		auth:      auth,
+		web:       web,
+		up:        up,
+		startedAt: time.Now(),
+		lgMap:     make(map[string][]int64),
+	}
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
@@ -68,7 +78,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"ok": true, "version": appVersion, "time": time.Now().UnixMilli()})
+		writeJSON(w, 200, map[string]any{"ok": true, "version": version.Version, "time": time.Now().UnixMilli()})
 	})
 
 	mux.HandleFunc("POST /api/login", s.handleLogin)
@@ -98,6 +108,12 @@ func (s *Server) Handler() http.Handler {
 	}))
 	mux.HandleFunc("PUT /api/settings", s.needAuth(s.handleUpdateSettings))
 	mux.HandleFunc("GET /api/browse", s.needAuth(s.handleBrowse))
+
+	// 系统：版本信息 / 更新检测 / 一键更新 / 改管理员密码
+	mux.HandleFunc("GET /api/system/info", s.needAuth(s.handleSystemInfo))
+	mux.HandleFunc("GET /api/system/update", s.needAuth(s.handleCheckUpdate))
+	mux.HandleFunc("POST /api/system/update", s.needAuth(s.handleApplyUpdate))
+	mux.HandleFunc("POST /api/system/password", s.needAuth(s.handleChangePassword))
 
 	mux.HandleFunc("POST /mcp", s.handleMCP)
 	mux.HandleFunc("POST /api/mcp", s.handleMCP)
@@ -146,7 +162,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "请求体格式错误")
 		return
 	}
-	if s.auth.passHash == "" || !verifyPassword(in.Password, s.auth.passHash) {
+	if !s.auth.CheckPassword(in.Password) {
 		s.loginFailed(ip)
 		time.Sleep(400 * time.Millisecond)
 		writeErr(w, http.StatusUnauthorized, "密码错误")
@@ -160,7 +176,7 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	st := s.m.Settings()
 	writeJSON(w, 200, map[string]any{
 		"authenticated": true,
-		"version":       appVersion,
+		"version":       version.Version,
 		"api_key":       st.APIKey,
 		"default_dir":   st.DefaultDir,
 		"save_dirs":     st.SaveDirs,
@@ -178,7 +194,7 @@ func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
 		limit = 200
 	}
 	offset, _ := strconv.Atoi(q.Get("offset"))
-	tasks, total := s.m.List(ListFilter{
+	tasks, total := s.m.List(engine.ListFilter{
 		Status: q.Get("status"),
 		Query:  q.Get("q"),
 		Limit:  limit,
@@ -188,7 +204,7 @@ func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAddTask(w http.ResponseWriter, r *http.Request) {
-	var in TaskInput
+	var in engine.TaskInput
 	if err := readJSON(r, &in); err != nil {
 		writeErr(w, 400, "请求体格式错误")
 		return
@@ -265,7 +281,7 @@ func (s *Server) serveTaskFile(w http.ResponseWriter, r *http.Request, download 
 		writeErr(w, 404, "任务不存在")
 		return
 	}
-	if t.Status != StatusCompleted || t.FileName == "" {
+	if t.Status != engine.StatusCompleted || t.FileName == "" {
 		writeErr(w, 409, "文件尚未下载完成")
 		return
 	}
@@ -304,8 +320,8 @@ func (s *Server) handleThumb(w http.ResponseWriter, r *http.Request) {
 	p := t.AbsPath() + ".jpg"
 	f, err := os.Open(p)
 	if err != nil {
-		if !t.HasThumb && t.Status == StatusCompleted {
-			go s.m.makeThumb(t.ID)
+		if !t.HasThumb && t.Status == engine.StatusCompleted {
+			s.m.EnsureThumb(t.ID)
 		}
 		writeErr(w, 404, "暂无缩略图")
 		return
@@ -332,12 +348,12 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	fl.Flush()
 
-	ch, _ := s.m.hub.subscribe()
-	defer s.m.hub.unsubscribe(ch)
+	ch, _ := s.m.Subscribe()
+	defer s.m.Unsubscribe(ch)
 
-	hello, _ := json.Marshal(map[string]any{"version": appVersion, "time": time.Now().UnixMilli()})
+	hello, _ := json.Marshal(map[string]any{"version": version.Version, "time": time.Now().UnixMilli()})
 	fmt.Fprintf(w, "event: hello\ndata: %s\n\n", hello)
-	tasks, _ := s.m.List(ListFilter{Limit: 300})
+	tasks, _ := s.m.List(engine.ListFilter{Limit: 300})
 	snap, _ := json.Marshal(tasks)
 	fmt.Fprintf(w, "event: snapshot\ndata: %s\n\n", snap)
 	stats, _ := json.Marshal(s.m.Stats())

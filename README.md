@@ -1,4 +1,4 @@
-# VidFetch
+# Media Super
 
 > 为低配 NAS 打造的视频下载器：**单 Go 二进制、常驻内存约 15MB、m3u8 多线程拉流 + 无损转封装成 mp4**。
 > 同时提供 **REST API** 与 **MCP（Model Context Protocol）** 两种接入方式，自带 Web 管理页。
@@ -64,8 +64,8 @@ docker compose up -d --build
 ### 不用 Docker
 
 ```bash
-CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o vidfetch .
-VF_ADMIN_PASS=xxx VF_SAVE_DIRS="/data/videos:本地" ./vidfetch -addr :8080 -data ./data
+CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o mediasuper .
+VF_ADMIN_PASS=xxx VF_SAVE_DIRS="/data/videos:本地" ./mediasuper -addr :8080 -data ./data
 ```
 
 需要系统里有 `ffmpeg`（`apk add ffmpeg` / `apt install ffmpeg`）。没装也能下 m3u8 分片，但无法合成 mp4。
@@ -76,7 +76,7 @@ VF_ADMIN_PASS=xxx VF_SAVE_DIRS="/data/videos:本地" ./vidfetch -addr :8080 -dat
 |---|---|---|
 | `VF_ADDR` | `:8080` | 监听地址 |
 | `VF_DATA_DIR` | `/data` | 数据库 + 临时分片目录 |
-| `VF_ADMIN_PASS` | `vidfetch123` | 后台密码，首次启动写入数据库 |
+| `VF_ADMIN_PASS` | `mediasuper123` | 后台密码，首次启动写入数据库 |
 | `VF_SAVE_DIRS` | `/downloads/hdd:硬盘` | `路径:标签,路径:标签` |
 | `VF_DEFAULT_DIR` | 第一个目录 | 默认保存目录 |
 | `VF_MAX_TASKS` | `2` | 同时下载任务数 |
@@ -141,9 +141,9 @@ Claude Desktop 之类：
 ```json
 {
   "mcpServers": {
-    "vidfetch": {
+    "mediasuper": {
       "command": "docker",
-      "args": ["exec", "-i", "vidfetch", "/usr/local/bin/vidfetch",
+      "args": ["exec", "-i", "mediasuper", "/usr/local/bin/mediasuper",
                "-stdio", "-remote", "http://127.0.0.1:8080", "-key", "vf_xxxxxxxx"]
     }
   }
@@ -155,8 +155,8 @@ Claude Desktop 之类：
 ```json
 {
   "mcpServers": {
-    "vidfetch": {
-      "command": "/usr/local/bin/vidfetch",
+    "mediasuper": {
+      "command": "/usr/local/bin/mediasuper",
       "args": ["-stdio", "-remote", "http://192.168.1.123:9099", "-key", "vf_xxxxxxxx"]
     }
   }

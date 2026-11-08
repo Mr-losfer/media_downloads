@@ -1,0 +1,37 @@
+# 用预先编译好的二进制打镜像，适合 NAS 上没有 Go 环境、内存太小跑不动编译的场景。
+#
+#   scripts/build-release.sh            # 先交叉编译出 dist/mediasuper-linux-amd64
+#   docker build -f deploy/docker/Dockerfile.bin \
+#     --build-arg BIN=dist/mediasuper-linux-amd64 \
+#     -t mediasuper:local .
+#
+# 或者用 CI 产出的 Release 二进制：
+#   curl -L -o mediasuper https://github.com/losfer778/media_downloads/releases/latest/download/mediasuper-linux-amd64
+#   docker build -f deploy/docker/Dockerfile.bin -t mediasuper:local .
+FROM alpine:3.21
+
+ARG BIN=mediasuper
+
+RUN apk add --no-cache ca-certificates tzdata ffmpeg tini \
+    && addgroup -g 1000 -S app \
+    && adduser -u 1000 -S -G app -h /home/app app \
+    && mkdir -p /data /downloads /home/app \
+    && chown -R app:app /data /downloads /home/app
+
+ENV TZ=Asia/Shanghai \
+    MS_ADDR=:8080 \
+    MS_DATA_DIR=/data \
+    MS_FFMPEG=/usr/bin/ffmpeg
+
+COPY ${BIN} /usr/local/bin/mediasuper
+RUN chmod 0755 /usr/local/bin/mediasuper
+
+USER 1000:1000
+WORKDIR /home/app
+VOLUME ["/data"]
+EXPOSE 8080
+
+HEALTHCHECK --interval=60s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:8080/api/health >/dev/null || exit 1
+
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/mediasuper"]

@@ -1,10 +1,13 @@
-package main
+package server
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+
+	"mediasuper/internal/engine"
+	"mediasuper/internal/version"
 )
 
 const mcpVersion = "2025-06-18"
@@ -152,7 +155,7 @@ func errResult(format string, a ...any) toolResult {
 	return toolResult{Content: []map[string]any{{"type": "text", "text": fmt.Sprintf(format, a...)}}, IsError: true}
 }
 
-func taskBrief(t *Task) map[string]any {
+func taskBrief(t *engine.Task) map[string]any {
 	return map[string]any{
 		"task_id":    t.ID,
 		"title":      t.Title,
@@ -192,7 +195,7 @@ func (s *Server) dispatch(req rpcRequest, host string) (*rpcResponse, bool) {
 		resp.Result = map[string]any{
 			"protocolVersion": ver,
 			"capabilities":    map[string]any{"tools": map[string]any{"listChanged": false}},
-			"serverInfo":      map[string]any{"name": "vidfetch", "version": appVersion},
+			"serverInfo":      map[string]any{"name": version.AppID, "version": version.Version},
 			"instructions": "视频下载管理服务。用 submit_download 提交 m3u8/mp4 直链，用 get_task / list_tasks 查询进度（progress 为百分比，speed 单位字节/秒），用 get_download_link 获取可播放链接。",
 		}
 
@@ -236,7 +239,7 @@ func (s *Server) dispatch(req rpcRequest, host string) (*rpcResponse, bool) {
 func (s *Server) callTool(name string, args json.RawMessage, host string) (any, error) {
 	switch name {
 	case "submit_download":
-		var in TaskInput
+		var in engine.TaskInput
 		if err := json.Unmarshal(args, &in); err != nil {
 			return nil, fmt.Errorf("参数错误: %w", err)
 		}
@@ -263,7 +266,7 @@ func (s *Server) callTool(name string, args json.RawMessage, host string) (any, 
 		if in.Limit <= 0 || in.Limit > 200 {
 			in.Limit = 50
 		}
-		tasks, total := s.m.List(ListFilter{Status: in.Status, Query: in.Query, Limit: in.Limit, Offset: in.Offset})
+		tasks, total := s.m.List(engine.ListFilter{Status: in.Status, Query: in.Query, Limit: in.Limit, Offset: in.Offset})
 		out := make([]map[string]any, 0, len(tasks))
 		for _, t := range tasks {
 			out = append(out, taskBrief(t))
@@ -277,7 +280,7 @@ func (s *Server) callTool(name string, args json.RawMessage, host string) (any, 
 		_ = json.Unmarshal(args, &in)
 		t, ok := s.m.Get(in.TaskID)
 		if !ok {
-			return nil, errNotFound
+			return nil, engine.ErrNotFound
 		}
 		b := taskBrief(t)
 		b["kind"] = t.Kind
@@ -338,9 +341,9 @@ func (s *Server) callTool(name string, args json.RawMessage, host string) (any, 
 		_ = json.Unmarshal(args, &in)
 		t, ok := s.m.Get(in.TaskID)
 		if !ok {
-			return nil, errNotFound
+			return nil, engine.ErrNotFound
 		}
-		if t.Status != StatusCompleted {
+		if t.Status != engine.StatusCompleted {
 			return nil, fmt.Errorf("文件尚未下载完成（当前状态 %s）", t.Status)
 		}
 		st := s.m.Settings()
@@ -385,7 +388,7 @@ func (s *Server) callTool(name string, args json.RawMessage, host string) (any, 
 
 func (s *Server) handleMCP(w http.ResponseWriter, r *http.Request) {
 	if !s.auth.authorized(r) {
-		w.Header().Set("WWW-Authenticate", `Bearer realm="vidfetch"`)
+		w.Header().Set("WWW-Authenticate", `Bearer realm="mediasuper"`)
 		writeErr(w, http.StatusUnauthorized, "未授权：请在 Authorization: Bearer 提供 API Key")
 		return
 	}

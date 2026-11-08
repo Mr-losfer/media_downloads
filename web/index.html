@@ -7,8 +7,8 @@
 <meta name="theme-color" content="#0a0b0d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="VidFetch">
-<title>VidFetch · 视频下载</title>
+<meta name="apple-mobile-web-app-title" content="Media Super">
+<title>Media Super · 视频下载</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon.svg">
@@ -23,7 +23,7 @@
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--sig)">
         <rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="M10 9.2l5.2 2.8L10 14.8z" fill="currentColor" stroke="none"/>
       </svg>
-      VidFetch
+      Media Super
     </h1>
     <p class="sub">视频下载管理器 · 请输入后台密码</p>
     <label class="lbl" for="loginPass">后台密码</label>
@@ -42,11 +42,12 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="M10 9.2l5.2 2.8L10 14.8z" fill="currentColor" stroke="none"/>
         </svg>
-        VidFetch
+        Media Super
         <span class="ver" id="verLabel">v1</span>
       </div>
       <div class="spacer"></div>
       <span class="status" id="pillDisk" title="保存目录剩余空间"><i></i><b>—</b></span>
+      <span class="status upd-pill" id="pillUpdate" hidden title="发现新版本，点击查看" role="button" tabindex="0"><i></i><b>可更新</b></span>
       <span class="status" id="pillLive" title="实时推送状态"><i></i><span id="liveText">连接中</span></span>
       <button class="icon-btn" id="btnLogout" aria-label="退出登录" title="退出登录">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6"/></svg>
@@ -230,6 +231,10 @@ curl "<span data-base>/api/tasks/&lt;id&gt;/download?token=$VF_KEY" -O -J</pre><
                 <tr><td><span class="m get">GET</span></td><td class="mono">/api/settings</td><td>读取设置</td></tr>
                 <tr><td><span class="m">PUT</span></td><td class="mono">/api/settings</td><td>修改设置（只传要改的字段）</td></tr>
                 <tr><td><span class="m get">GET</span></td><td class="mono">/api/browse</td><td>列目录（选保存路径）</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/system/info</td><td>版本、架构、运行环境</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/system/update</td><td>检查更新（<code>?force=1</code> 跳过缓存）</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/system/update</td><td>一键更新并重启</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/system/password</td><td>修改管理员密码</td></tr>
                 <tr><td><span class="m">POST</span></td><td class="mono">/mcp</td><td>MCP JSON-RPC 端点</td></tr>
               </tbody>
             </table>
@@ -271,7 +276,7 @@ event: task.deleted {"id":"…"}
       <div id="docMcp" class="hidden">
         <div class="doc-head">
           <h2>MCP 服务</h2>
-          <p>把 VidFetch 接到任何支持 Model Context Protocol 的 Agent 上，让模型自己提交下载、查进度、改名、删文件。
+          <p>把 Media Super 接到任何支持 Model Context Protocol 的 Agent 上，让模型自己提交下载、查进度、改名、删文件。
              走 JSON-RPC 2.0 over HTTP，用同一个 API Key 鉴权。</p>
         </div>
 
@@ -291,7 +296,7 @@ event: task.deleted {"id":"…"}
           <p class="hint" style="margin:0 0 9px">支持 HTTP 直连的客户端（Cline / Cherry Studio / 自研 Agent）直接填 URL 和 Bearer 头：</p>
           <div class="code"><button class="copy" data-copy aria-label="复制配置" title="复制"></button><pre>{
   "mcpServers": {
-    "vidfetch": {
+    "mediasuper": {
       "type": "http",
       "url": "<span data-base>/mcp</span>",
       "headers": { "Authorization": "Bearer vf_xxxxxxxx" }
@@ -301,9 +306,9 @@ event: task.deleted {"id":"…"}
           <p class="hint" style="margin:12px 0 9px">只能 stdio 的客户端（如 Claude Desktop）用同一份二进制转发到远端：</p>
           <div class="code"><button class="copy" data-copy aria-label="复制配置" title="复制"></button><pre>{
   "mcpServers": {
-    "vidfetch": {
+    "mediasuper": {
       "command": "docker",
-      "args": ["exec", "-i", "vidfetch", "/usr/local/bin/vidfetch",
+      "args": ["exec", "-i", "mediasuper", "/usr/local/bin/mediasuper",
                "-stdio", "-remote", "http://127.0.0.1:8080", "-key", "vf_xxxxxxxx"]
     }
   }
@@ -446,6 +451,45 @@ event: task.deleted {"id":"…"}
 
     <!-- ---------------- 设置 ---------------- -->
     <section id="viewSettings" class="hidden">
+      <div class="panel" id="panelUpdate">
+        <h3>
+          系统更新
+          <span class="badge-ver" id="updBadge" hidden>有新版本</span>
+        </h3>
+        <p class="hint">元数据优先走 <code>gh-proxy.com</code> 加速，代理异常时自动直连 GitHub。</p>
+        <div class="ver-grid">
+          <div class="ver-item"><span class="m-k">当前版本</span><span class="mono" id="curVer">—</span></div>
+          <div class="ver-item"><span class="m-k">最新版本</span><span class="mono" id="latestVer">—</span></div>
+          <div class="ver-item"><span class="m-k">设备架构</span><span class="mono" id="sysPlatform">—</span></div>
+          <div class="ver-item"><span class="m-k">更新源</span><span class="mono" id="updSource">—</span></div>
+        </div>
+        <div class="upd-actions">
+          <button class="sm" type="button" id="btnCheckUpdate">检查更新</button>
+          <button class="primary" type="button" id="btnApplyUpdate" disabled>一键更新</button>
+          <span class="spacer"></span>
+          <span class="hint" id="updStatus" style="margin:0">登录后会自动检查一次</span>
+        </div>
+        <details class="more" id="updNotesWrap" hidden>
+          <summary>更新说明</summary>
+          <pre id="updNotes" class="notes-pre"></pre>
+        </details>
+        <p class="hint" style="margin-top:10px">
+          更新包会先下载到数据目录并校验 SHA256，再热切换到新版本；容器重启后依然生效。
+          也可以关掉这里，直接用 <code>docker compose pull &amp;&amp; up -d</code> 升级镜像。
+        </p>
+      </div>
+
+      <div class="panel">
+        <h3>管理员密码</h3>
+        <p class="hint">默认密码是 <code>losfer</code>，首次登录后建议立即修改。修改后旧密码立即失效。</p>
+        <div class="grid2">
+          <div class="field full"><label class="lbl" for="pwOld">当前密码</label><input type="password" id="pwOld" autocomplete="current-password" placeholder="请输入当前密码"></div>
+          <div class="field"><label class="lbl" for="pwNew">新密码（至少 6 位）</label><input type="password" id="pwNew" autocomplete="new-password"></div>
+          <div class="field"><label class="lbl" for="pwNew2">确认新密码</label><input type="password" id="pwNew2" autocomplete="new-password"></div>
+        </div>
+        <div style="margin-top:10px"><button class="sm" type="button" id="btnChangePw">修改密码</button></div>
+      </div>
+
       <div class="panel">
         <h3>下载性能</h3>
         <p class="hint">低配设备建议：并发任务 2、分片连接 8。两者相乘即最大同时连接数。</p>
