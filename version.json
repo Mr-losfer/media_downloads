@@ -1,19 +1,19 @@
 {
-  "version": "2.1.0",
-  "released_at": "2026-11-08T14:05:54Z",
-  "notes": "ci(release): 多架构打包、GitHub Release、ghcr 镜像与 fnOS fpk 自动化",
+  "version": "2.2.0",
+  "released_at": "2026-11-08T14:16:41Z",
+  "notes": "docs: 补全部署、更新、fnOS 与架构文档；版本 2.2.0",
   "repo": "https://github.com/losfer778/media_downloads",
-  "image": "ghcr.io/losfer778/media-super:2.1.0",
+  "image": "ghcr.io/losfer778/media-super:2.2.0",
   "assets": {
-    "linux-amd64": { "name": "mediasuper-linux-amd64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.1.0/mediasuper-linux-amd64", "sha256": "02eef898cbdd92564ce45331538e38736d4efef445fa99f36b0b9b517dd8918c", "size": 7344312 },
-    "linux-arm64": { "name": "mediasuper-linux-arm64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.1.0/mediasuper-linux-arm64", "sha256": "7c88bf7f7ed59e85443e57a2e71b2a425fd730a2ac0d8b4e4266b6b12f6a21ab", "size": 6947000 },
-    "linux-armv7": { "name": "mediasuper-linux-armv7", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.1.0/mediasuper-linux-armv7", "sha256": "e672238763419dfb908e21239d5132e3e564dc40784ee1989bfc26cb83f41636", "size": 7143608 },
-    "linux-armv6": { "name": "mediasuper-linux-armv6", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.1.0/mediasuper-linux-armv6", "sha256": "9236884888b78480e339fc35792713daf7c290d9529318717b074d0be8225edb", "size": 7143608 },
-    "linux-386": { "name": "mediasuper-linux-386", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.1.0/mediasuper-linux-386", "sha256": "b1c9d76eee63e18b13b4e613d65629a8bbadb63f7c768d541248f6800ca6000b", "size": 7082168 }
+    "linux-amd64": { "name": "mediasuper-linux-amd64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.2.0/mediasuper-linux-amd64", "sha256": "67262dc963f9a54d0ef7c5d77016295d43ec1e30b48837ad0f1b5545897b69f4", "size": 7344312 },
+    "linux-arm64": { "name": "mediasuper-linux-arm64", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.2.0/mediasuper-linux-arm64", "sha256": "3ba5545c43da96d7705cd8a8ef047e9268bfb4648e22161240aef58d2585da12", "size": 6947000 },
+    "linux-armv7": { "name": "mediasuper-linux-armv7", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.2.0/mediasuper-linux-armv7", "sha256": "c7f85ab8af4ddb4c1a015c2e222fa4b5b515cec10af2f3996e27faa286833231", "size": 7143608 },
+    "linux-armv6": { "name": "mediasuper-linux-armv6", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.2.0/mediasuper-linux-armv6", "sha256": "07890f3f4e36a3426e79f0d3fba96d1ae5460d8e3a09cd8eb3beb5a7d46b84bd", "size": 7143608 },
+    "linux-386": { "name": "mediasuper-linux-386", "url": "https://github.com/losfer778/media_downloads/releases/download/v2.2.0/mediasuper-linux-386", "sha256": "709d6b48529e95159eda2fffee54e02f0249369ecd15750d4651ce9564044c5e", "size": 7082168 }
   },
   "fpk": {
-    "mediasuper_2.1.0_fnos-arm.fpk": { "url": "https://github.com/losfer778/media_downloads/releases/download/v2.1.0/mediasuper_2.1.0_fnos-arm.fpk", "sha256": "f00bf7f49ed3dfa5f9387a61790fad5375be6745e0f52a90a426be2e55dec153", "size": 2929956 },
-    "mediasuper_2.1.0_fnos-x86.fpk": { "url": "https://github.com/losfer778/media_downloads/releases/download/v2.1.0/mediasuper_2.1.0_fnos-x86.fpk", "sha256": "dc8eedd17aa4a8a81e03b1195dc4f712471c20c3f6a2ce09b4bc9b2f624a5e61", "size": 3180263 }
+    "mediasuper_2.2.0_fnos-arm.fpk": { "url": "https://github.com/losfer778/media_downloads/releases/download/v2.2.0/mediasuper_2.2.0_fnos-arm.fpk", "sha256": "bbac8cb3b186ae5d87b743ce74cae937899181f6324b4479a6dd3a6437ee49e4", "size": 2930659 },
+    "mediasuper_2.2.0_fnos-x86.fpk": { "url": "https://github.com/losfer778/media_downloads/releases/download/v2.2.0/mediasuper_2.2.0_fnos-x86.fpk", "sha256": "03dcce3c3830fd5001cb2d7078fa78f561bdf36a2a2723e098a76d76d253301a", "size": 3180930 }
   },
-  "checksums": "https://github.com/losfer778/media_downloads/releases/download/v2.1.0/SHA256SUMS"
+  "checksums": "https://github.com/losfer778/media_downloads/releases/download/v2.2.0/SHA256SUMS"
 }
