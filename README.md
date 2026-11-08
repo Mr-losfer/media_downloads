@@ -36,7 +36,7 @@ https://github.com/losfer778/media_downloads
 | 系统 | 版本信息、更新检测、一键更新、自动更新（2 小时巡检 / 空闲升级）、修改管理员密码 |
 | 鉴权 | 后台密码（PBKDF2-SHA256 120k 轮）+ 签名 Cookie；API/MCP 用 Bearer API Key |
 | 健壮性 | 重启后未完成任务自动重排；启动清理残留分片；磁盘 <1GB 拒收新任务；设置越界自动夹紧 |
-| 界面 | 移动优先单页应用：四页底部导航（首页 = 按时段问候 + 下载卡片 / 任务 / 文档 / 设置，设置内再按更新/下载/存储/通知/安全分类）、提交后自动跳转任务页、夜间 / 白天一键切换（圆形水波过渡）、底部抽屉、SSE 增量刷新、内置 API / MCP 文档页、PWA 可加到主屏 |
+| 界面 | 移动优先单页应用：手机端四页底部导航、桌面端（≥1024px）左侧栏导航（首页 = 按时段问候 + 下载卡片 / 任务 / 文档 / 设置）、设置内再按更新/下载/存储/通知/安全分类、提交后自动跳转任务页、夜间 / 白天一键切换（圆形水波过渡）、手机端关闭橡皮筋回弹、底部抽屉、SSE 增量刷新、内置 API / MCP 文档页、PWA 可加到主屏 |
 
 ## 快速开始
 
@@ -71,7 +71,9 @@ docker run -d --name mediasuper --restart unless-stopped \
 
 到 [Releases](https://github.com/losfer778/media_downloads/releases) 下载 `mediasuper_<版本>_fnos-x86.fpk` 或 `_fnos-arm.fpk`，
 在应用中心手动安装即可。**安装向导里可直接设置管理员密码和 Web 端口**（密码留空则为 `losfer`，
-端口默认 `9099`），装好后也能在应用中心 →「配置」里随时修改。打包与调试见 [docs/FNOS.md](docs/FNOS.md)。
+端口默认 `9099`），装好后也能在应用中心 →「配置」里随时修改。
+安装包**自带 ffmpeg**（x86 包约 72MB / arm 包约 67MB），不依赖 NAS 系统里是否装了 ffmpeg，m3u8 下完即可封装成 mp4。
+打包与调试见 [docs/FNOS.md](docs/FNOS.md)。
 
 ### 方式四：裸机二进制
 
@@ -234,6 +236,11 @@ docs/                   部署、更新、fnOS、架构、版本列表
 
 ## 常见问题
 
+**提示「未找到 ffmpeg」，m3u8 无法封装？**
+v2.5.3 起 fnOS 安装包自带 ffmpeg（`app/bin/ffmpeg`），正常安装不会再缺。若用的是旧包或手动替换过二进制，
+到「设置 → 下载」看 ffmpeg 状态行，也可以把系统里 ffmpeg 的绝对路径填进「ffmpeg 路径」。
+这类错误现在会**直接失败、不再自动重下整部片子**。
+
 **m3u8 下完了但 mp4 打不开？**
 `-c copy` 只换容器不解码。若源编码 mp4 不支持（例如某些 H.265/AC3 组合），开启「允许转码」后会自动降级转码（J1800 上很慢，慎用）。
 
@@ -252,3 +259,6 @@ docs/                   部署、更新、fnOS、架构、版本列表
 ## 许可
 
 MIT
+
+fnOS 安装包内置的 ffmpeg 取自 [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) 的 linux-gpl 构建（GPLv3，含 libx264/libx265），
+以独立可执行文件随包分发；对应源码与构建脚本见该仓库。

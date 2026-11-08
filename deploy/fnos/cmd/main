@@ -147,7 +147,13 @@ start_app() {
 
   export MS_ADDR=":${port}"
   export MS_DATA_DIR="${DATA_DIR}"
-  export MS_FFMPEG="${MS_FFMPEG:-ffmpeg}"
+  # 安装包内置了静态 ffmpeg，优先用它；没有才退回系统 PATH
+  if [ -x "${APP_DIR}/bin/ffmpeg" ]; then
+    export MS_FFMPEG="${MS_FFMPEG:-${APP_DIR}/bin/ffmpeg}"
+    export PATH="${APP_DIR}/bin:${PATH}"
+  else
+    export MS_FFMPEG="${MS_FFMPEG:-ffmpeg}"
+  fi
   export MS_SAVE_DIRS="${MS_SAVE_DIRS:-${share}:下载}"
   export MS_DEFAULT_DIR="${MS_DEFAULT_DIR:-${share}}"
 

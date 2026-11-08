@@ -298,7 +298,9 @@ func (m *Manager) run(t *Task) {
 			real.Error = "已取消"
 		default:
 			real.Error = err.Error()
-			if st.MaxRetries > 0 && real.Attempts <= st.MaxRetries {
+			// 永久错误（ffmpeg 缺失、编码不兼容且不允许转码）重试只会把整部片子重下一遍，
+			// 直接判定失败，让用户先修环境。
+			if st.MaxRetries > 0 && real.Attempts <= st.MaxRetries && !IsPermanent(err) {
 				real.Status = StatusQueued
 				real.Downloaded = 0
 				real.Progress = 0
@@ -307,6 +309,9 @@ func (m *Manager) run(t *Task) {
 				log.Printf("[%s] 第 %d 次失败，自动重排: %v", t.ID, real.Attempts, err)
 			} else {
 				real.Status = StatusFailed
+				if IsPermanent(err) {
+					log.Printf("[%s] 失败（不可重试）: %v", t.ID, err)
+				}
 			}
 		}
 		snapshot = real.clone()
@@ -865,6 +870,15 @@ func (m *Manager) FFmpeg() (bool, string) {
 	m.mu.Unlock()
 	ver, ok := ff.Available()
 	return ok, ver
+}
+
+// FFmpegPath 返回解析后的 ffmpeg 路径（空串表示没找到），不执行进程，适合频繁查询。
+func (m *Manager) FFmpegPath() (string, bool) {
+	m.mu.Lock()
+	ff := m.ff
+	m.mu.Unlock()
+	p := ff.Path()
+	return p, p != ""
 }
 
 // ---------- 对外暴露的少量桥接方法（server 包用） ----------

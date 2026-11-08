@@ -50,13 +50,13 @@
 <div id="appView" class="hidden">
   <header class="app-bar">
     <div class="app-bar-in">
-      <div class="brand">
+      <a class="brand" href="#/home" aria-label="回到首页">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="M10 9.2l5.2 2.8L10 14.8z" fill="currentColor" stroke="none"/>
         </svg>
         Media Super
         <span class="ver" id="verLabel">v1</span>
-      </div>
+      </a>
       <div class="spacer"></div>
       <span class="status" id="pillDisk" title="保存目录剩余空间"><i></i><b>—</b></span>
       <span class="status upd-pill" id="pillUpdate" hidden title="发现新版本，点击查看" role="button" tabindex="0"><i></i><b>可更新</b></span>
@@ -137,6 +137,7 @@
 
     <!-- ---------------- 任务 ---------------- -->
     <section id="viewTasks" class="hidden">
+      <h1 class="page-title">任务</h1>
       <div class="metrics">
         <div><span class="m-k">进行中</span><span class="m-v accent" id="stActive">0</span></div>
         <div><span class="m-k">排队</span><span class="m-v" id="stQueued">0</span></div>
@@ -163,6 +164,7 @@
 
     <!-- ---------------- 文档 ---------------- -->
     <section id="viewDocs" class="hidden">
+      <h1 class="page-title">文档</h1>
       <div class="toolbar">
         <div class="segmented" role="group" aria-label="文档类型">
           <button type="button" data-doc="api" aria-pressed="true">REST API</button>
@@ -481,6 +483,7 @@ event: task.deleted {"id":"…"}
 
     <!-- ---------------- 设置 ---------------- -->
     <section id="viewSettings" class="hidden">
+      <h1 class="page-title">设置</h1>
       <div class="toolbar set-toolbar">
         <div class="segmented" role="group" aria-label="设置分类">
           <button type="button" data-set="update" aria-pressed="true">更新</button>
@@ -547,6 +550,7 @@ event: task.deleted {"id":"…"}
           <div class="field"><label class="lbl" for="sProxy">HTTP / SOCKS 代理</label><input type="text" id="sProxy" placeholder="http://127.0.0.1:7890" inputmode="url"></div>
           <div class="field"><label class="lbl" for="sFFmpeg">ffmpeg 路径</label><input type="text" id="sFFmpeg" placeholder="ffmpeg"></div>
         </div>
+        <p class="ff-state" id="ffmpegState"><i></i><span>正在检测 ffmpeg…</span></p>
         <div style="margin-top:6px">
           <label class="check"><input type="checkbox" id="sTranscode"><span>重封装失败时允许转码（CPU 占用会明显升高）</span></label>
           <label class="check"><input type="checkbox" id="sThumbs"><span>生成视频缩略图</span></label>

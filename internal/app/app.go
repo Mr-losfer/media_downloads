@@ -132,9 +132,13 @@ func Run(opt Options) error {
 	banner(opt.Addr, opt.DataDir, st, apiKey, passSource)
 
 	if open, ffVer := m.FFmpeg(); open {
-		log.Printf("  ffmpeg  %s", ffVer)
+		if p, ok := m.FFmpegPath(); ok {
+			log.Printf("  ffmpeg  %s · %s", ffVer, p)
+		} else {
+			log.Printf("  ffmpeg  %s", ffVer)
+		}
 	} else {
-		log.Printf("  ⚠ ffmpeg 未找到：m3u8 分片仍可下载，但无法转成 mp4")
+		log.Printf("  ⚠ ffmpeg 未找到：m3u8 分片仍可下载，但无法转成 mp4（可在设置里指定路径）")
 	}
 
 	errCh := make(chan error, 1)

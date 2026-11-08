@@ -20,6 +20,7 @@ var updateMu sync.Mutex
 // handleSystemInfo 返回构建信息与运行环境，前端「关于」区块直接用。
 func (s *Server) handleSystemInfo(w http.ResponseWriter, r *http.Request) {
 	st := s.m.Settings()
+	ffPath, ffOK := s.m.FFmpegPath()
 	writeJSON(w, 200, map[string]any{
 		"name":        version.Name,
 		"version":     version.Version,
@@ -36,6 +37,8 @@ func (s *Server) handleSystemInfo(w http.ResponseWriter, r *http.Request) {
 		"uptime":      int64(time.Since(s.startedAt).Seconds()),
 		"started_at":  s.startedAt.UnixMilli(),
 		"default_dir": st.DefaultDir,
+		"ffmpeg_ok":   ffOK,
+		"ffmpeg_path": ffPath,
 	})
 }
 

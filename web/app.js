@@ -845,6 +845,7 @@ $('#btnSaveSettings').addEventListener('click', async () => {
     fillDirSelect(out);
     applyBase();
     await loadStats();
+    await loadSystemInfo();
     toast('设置已保存', 'ok');
   } catch (ex) {
     toast(ex.message, 'err');
@@ -870,7 +871,21 @@ async function loadSystemInfo() {
     state.sys = d;
     if ($('#curVer')) $('#curVer').textContent = 'v' + d.version;
     if ($('#sysPlatform')) $('#sysPlatform').textContent = d.platform || (d.os + '/' + d.arch);
+    paintFFmpeg(d);
   } catch (e) { /* 静默：不影响主流程 */ }
+}
+
+// 「设置 → 下载」里显示 ffmpeg 是否就绪。安装包里自带 ffmpeg，
+// 如果用户看到未找到，多半是自定义路径写错了。
+function paintFFmpeg(d) {
+  const box = $('#ffmpegState');
+  if (!box) return;
+  const ok = !!(d && d.ffmpeg_ok);
+  const p = (d && d.ffmpeg_path) || '';
+  box.classList.toggle('bad', !ok);
+  box.innerHTML = '<i></i><span>' +
+    (ok ? 'ffmpeg 已就绪' : '未找到 ffmpeg：m3u8 分片无法封装成 mp4，请检查路径') +
+    (p ? ' <code>' + esc(p) + '</code>' : '') + '</span>';
 }
 
 function paintUpdate(st) {
@@ -1149,11 +1164,30 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 // hash 相同不会触发 hashchange（比如上次渲染失败停在首页），点导航时兜底重绘一次
-$$('.tabbar a').forEach((a) => a.addEventListener('click', () => setTimeout(route, 0)));
+$$('.tabbar a, .brand').forEach((a) => a.addEventListener('click', () => setTimeout(route, 0)));
 // 从浏览器往返缓存恢复时也重绘，避免看到过期的页面状态
 window.addEventListener('pageshow', (e) => { if (e.persisted) route(); });
 
 /* ---------------- 初始化 ---------------- */
+// 手机端关掉橡皮筋回弹：滚到顶 / 底之后再往外拉，不再把整页带动。
+// 弹层、代码块这些内部可滚动区域交给它们自己处理。
+(function lockOverscroll() {
+  let startY = 0;
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) startY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 1) return;
+    const t = e.target;
+    if (t && t.closest && t.closest('.sheet, .sheet-mask, .code pre, .notes-pre, textarea')) return;
+    const el = document.scrollingElement || document.documentElement;
+    const dy = e.touches[0].clientY - startY;
+    const atTop = el.scrollTop <= 0;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+    if ((atTop && dy > 0) || (atBottom && dy < 0)) e.preventDefault();
+  }, { passive: false });
+})();
+
 $$('[data-copy]').forEach((b) => { b.innerHTML = ico('copy'); });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && state.es && state.es.readyState === 2) connectEvents();

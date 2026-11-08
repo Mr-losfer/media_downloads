@@ -3,40 +3,166 @@ package engine
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 // FileOps 封装 ffmpeg / ffprobe。全部走 -c copy 重封装，解码转码只做兜底，
 // 这是低配 NAS 能扛住 m3u8 的唯一正确姿势。
 type FileOps struct {
-	ffmpeg  string
+	mu      sync.Mutex
+	hint    string // 用户配置里写的路径，找不到时用于提示
+	ffmpeg  string // 解析后的绝对路径；空串表示没找到
 	ffprobe string
 }
 
+// newFileOps 解析 ffmpeg 位置。
+//
+// fnOS / 容器里 PATH 往往不含 ffmpeg，用户升级前写进数据库的 "ffmpeg"
+// 也不能再用了，所以这里按「用户配置 → 应用自带 → PATH → 常见安装位置」
+// 的顺序做一次真实探测，而不是把字符串直接交给 exec。
 func newFileOps(ffmpegPath string) *FileOps {
 	if ffmpegPath == "" {
 		ffmpegPath = "ffmpeg"
 	}
-	probe := "ffprobe"
-	if strings.Contains(ffmpegPath, "/") {
-		probe = strings.TrimSuffix(ffmpegPath, "ffmpeg") + "ffprobe"
+	f := &FileOps{hint: ffmpegPath}
+	f.resolve()
+	return f
+}
+
+func (f *FileOps) resolve() {
+	ff := resolveBinary(f.hint, "ffmpeg")
+	probe := ""
+	if ff != "" {
+		if p := filepath.Join(filepath.Dir(ff), "ffprobe"); isExecutable(p) {
+			probe = p
+		}
 	}
-	return &FileOps{ffmpeg: ffmpegPath, ffprobe: probe}
+	if probe == "" {
+		probe = resolveBinary("", "ffprobe")
+	}
+	f.ffmpeg, f.ffprobe = ff, probe
+}
+
+// candidates 列出所有可能的可执行文件位置。
+func candidates(pref, name string) []string {
+	var list []string
+	add := func(p string) {
+		if p != "" {
+			list = append(list, p)
+		}
+	}
+
+	// 1. 用户显式配置（只有写成绝对路径/带目录才有意义）
+	if pref != "" && pref != name && strings.ContainsRune(pref, '/') {
+		add(pref)
+	}
+	// 2. 环境变量：Docker、systemd 里最常用的注入方式
+	add(os.Getenv("MS_FFMPEG"))
+
+	// 3. 程序自带（fpk 会把静态 ffmpeg 放在 app/bin，Docker 镜像放在 /app/bin）
+	if exe, err := os.Executable(); err == nil {
+		dir := filepath.Dir(exe)
+		add(filepath.Join(dir, name))
+		add(filepath.Join(dir, "bin", name))
+		add(filepath.Join(dir, "..", "bin", name))
+	}
+	// 4. PATH
+	if p, err := exec.LookPath(name); err == nil {
+		add(p)
+	}
+	// 5. 常见安装位置：fnOS、群晖、威联通、Homebrew、Linux 发行版
+	add("/usr/local/bin/" + name)
+	add("/usr/bin/" + name)
+	add("/bin/" + name)
+	add("/usr/trim/bin/" + name)
+	add("/vol1/@appcenter/ffmpeg/bin/" + name)
+	add("/volume1/@appstore/ffmpeg/bin/" + name)
+	add("/opt/homebrew/bin/" + name)
+	return list
+}
+
+func resolveBinary(pref, name string) string {
+	for _, p := range candidates(pref, name) {
+		if isExecutable(p) {
+			if abs, err := filepath.Abs(p); err == nil {
+				return abs
+			}
+			return p
+		}
+	}
+	return ""
+}
+
+func isExecutable(p string) bool {
+	if p == "" {
+		return false
+	}
+	st, err := os.Stat(p)
+	if err != nil || st.IsDir() {
+		return false
+	}
+	return st.Mode()&0o111 != 0
+}
+
+// Ready 表示 ffmpeg 现在可用。启动时没找到也没关系：每次调用都会重试解析，
+// 用户装完 ffmpeg 或改了设置不用重启进程。
+func (f *FileOps) Ready() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if isExecutable(f.ffmpeg) {
+		return true
+	}
+	f.resolve()
+	return f.ffmpeg != ""
+}
+
+// Path 返回当前解析到的 ffmpeg 路径（可能为空）。
+func (f *FileOps) Path() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.ffmpeg == "" {
+		f.resolve()
+	}
+	return f.ffmpeg
+}
+
+// MissingError 是「找不到 ffmpeg」时给用户看的统一文案。
+func (f *FileOps) MissingError() error {
+	hint := f.hint
+	if hint == "" || hint == "ffmpeg" {
+		hint = "未配置"
+	}
+	return permanent(fmt.Errorf(
+		"未找到 ffmpeg（当前配置：%s）：m3u8 分片需要 ffmpeg 才能封装成 mp4。"+
+			"请重新安装带 ffmpeg 的安装包，或在「设置 → 下载 → ffmpeg 路径」填写可执行文件的绝对路径", hint))
 }
 
 func (f *FileOps) Available() (string, bool) {
+	f.mu.Lock()
+	ff := f.ffmpeg
+	if ff == "" {
+		f.resolve()
+		ff = f.ffmpeg
+	}
+	f.mu.Unlock()
+	if ff == "" {
+		return "", false
+	}
 	// 低配机（J1800）冷启动首次执行 ffmpeg 可能超过 8 秒，给足时间避免误报
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, f.ffmpeg, "-version").Output()
+	out, err := exec.CommandContext(ctx, ff, "-version").Output()
 	if err != nil {
 		// 探测超时/失败但可执行文件确实存在时，按可用处理，真正调用时再兜底
-		if st, serr := os.Stat(f.ffmpeg); serr == nil && !st.IsDir() && st.Mode()&0o111 != 0 {
+		if isExecutable(ff) {
 			return "已就位（-version 未及时响应）", true
 		}
 		return "", false
@@ -49,6 +175,9 @@ func (f *FileOps) Available() (string, bool) {
 func (f *FileOps) Convert(ctx context.Context, in, out string, st Settings) (int64, error) {
 	if err := os.MkdirAll(dirOf(out), 0o755); err != nil {
 		return 0, err
+	}
+	if !f.Ready() {
+		return 0, f.MissingError()
 	}
 
 	cctx, cancel := context.WithTimeout(ctx, 45*time.Minute)
@@ -64,19 +193,25 @@ func (f *FileOps) Convert(ctx context.Context, in, out string, st Settings) (int
 		"-f", "mp4",
 		out,
 	}
-	if err := f.run(cctx, args); err == nil {
+	remuxErr := f.run(cctx, args)
+	if remuxErr == nil {
 		if sz := fileSize(out); sz > 0 {
 			return sz, nil
 		}
-	} else {
-		os.Remove(out)
+		remuxErr = fmt.Errorf("ffmpeg 没有输出文件")
+	}
+	os.Remove(out)
+
+	// 可执行文件在运行中被删掉、或权限变了：重试同样没用，直接给永久错误
+	if errors.Is(remuxErr, exec.ErrNotFound) {
+		return 0, f.MissingError()
 	}
 
 	if !st.AllowTranscode {
-		return 0, fmt.Errorf("无损重封装失败（编码不兼容），且未开启转码兜底")
+		return 0, permanentf(remuxErr,
+			"无损重封装失败（编码不兼容），且未开启转码兜底：%v", remuxErr)
 	}
 
-	os.Remove(out)
 	preset := st.TranscodePreset
 	if !allowedPresets[preset] {
 		preset = "veryfast"
@@ -94,6 +229,9 @@ func (f *FileOps) Convert(ctx context.Context, in, out string, st Settings) (int
 	}
 	if err := f.run(cctx, args); err != nil {
 		os.Remove(out)
+		if errors.Is(err, exec.ErrNotFound) {
+			return 0, f.MissingError()
+		}
 		return 0, fmt.Errorf("转码也失败了: %w", err)
 	}
 	sz := fileSize(out)
@@ -105,6 +243,9 @@ func (f *FileOps) Convert(ctx context.Context, in, out string, st Settings) (int
 
 // Thumb 抽一帧做封面，用完即走，失败不影响主流程。
 func (f *FileOps) Thumb(ctx context.Context, in, out string) error {
+	if !f.Ready() {
+		return f.MissingError()
+	}
 	cctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	args := []string{
@@ -124,24 +265,60 @@ func (f *FileOps) Thumb(ctx context.Context, in, out string) error {
 	return nil
 }
 
+// Duration 优先用 ffprobe；安装包里只带了 ffmpeg 时，退回解析 ffmpeg -i 的输出。
 func (f *FileOps) Duration(ctx context.Context, in string) float64 {
 	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(cctx, f.ffprobe,
-		"-v", "error", "-show_entries", "format=duration",
-		"-of", "default=noprint_wrappers=1:nokey=1", in).Output()
-	if err != nil {
+	f.mu.Lock()
+	probe := f.ffprobe
+	f.mu.Unlock()
+	if probe != "" {
+		out, err := exec.CommandContext(cctx, probe,
+			"-v", "error", "-show_entries", "format=duration",
+			"-of", "default=noprint_wrappers=1:nokey=1", in).Output()
+		if err == nil {
+			if d, perr := strconv.ParseFloat(strings.TrimSpace(string(out)), 64); perr == nil {
+				return d
+			}
+		}
+	}
+	ff := f.Path()
+	if ff == "" {
 		return 0
 	}
-	d, err := strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
-	if err != nil {
+	cmd := exec.CommandContext(cctx, ff, "-hide_banner", "-nostdin", "-i", in)
+	var buf bytes.Buffer
+	cmd.Stderr = &limitedWriter{w: &buf, n: 8192}
+	_ = cmd.Run() // 只给 -i 时 ffmpeg 必然以退出码 1 结束，信息全在 stderr
+	return parseFFmpegDuration(buf.String())
+}
+
+// parseFFmpegDuration 从 ffmpeg -i 的 stderr 里抠 "Duration: HH:MM:SS.ss"。
+func parseFFmpegDuration(s string) float64 {
+	const key = "Duration: "
+	i := strings.Index(s, key)
+	if i < 0 {
 		return 0
 	}
-	return d
+	rest := s[i+len(key):]
+	if len(rest) < 11 {
+		return 0
+	}
+	parts := strings.Split(strings.TrimSpace(rest[:11]), ":")
+	if len(parts) != 3 {
+		return 0
+	}
+	h, err1 := strconv.ParseFloat(parts[0], 64)
+	m, err2 := strconv.ParseFloat(parts[1], 64)
+	sec, err3 := strconv.ParseFloat(parts[2], 64)
+	if err1 != nil || err2 != nil || err3 != nil {
+		return 0
+	}
+	return h*3600 + m*60 + sec
 }
 
 func (f *FileOps) run(ctx context.Context, args []string) error {
-	cmd := exec.CommandContext(ctx, f.ffmpeg, args...)
+	cmd := exec.CommandContext(ctx, f.Path(), args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &limitedWriter{w: &stderr, n: 4096}
 	cmd.Stdout = nil
@@ -151,10 +328,20 @@ func (f *FileOps) run(ctx context.Context, args []string) error {
 		if msg == "" {
 			msg = err.Error()
 		}
-		return fmt.Errorf("%s", strings.ReplaceAll(msg, "\n", " | "))
+		// 保留原始错误：调用方要靠 errors.Is(err, exec.ErrNotFound) 区分
+		//「ffmpeg 没装」和「ffmpeg 跑失败」。
+		return &cmdError{msg: strings.ReplaceAll(msg, "\n", " | "), err: err}
 	}
 	return nil
 }
+
+type cmdError struct {
+	msg string
+	err error
+}
+
+func (e *cmdError) Error() string { return e.msg }
+func (e *cmdError) Unwrap() error { return e.err }
 
 type limitedWriter struct {
 	w *bytes.Buffer

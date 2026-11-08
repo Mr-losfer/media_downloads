@@ -424,6 +424,10 @@ func playlistDuration(segs []*hlsSeg, pl *hlsPlaylist) float64 {
 
 // downloadHLS 下载全部分片 → 顺序拼接 → 交给 ffmpeg 重封装。
 func (d *dlCtx) downloadHLS(ctx context.Context, rawurl string) (string, int64, error) {
+	// 没有 ffmpeg 就封装不出 mp4：先失败，别让几百个分片白下一遍。
+	if !d.m.ff.Ready() {
+		return "", 0, d.m.ff.MissingError()
+	}
 	pl, base, err := d.fetchPlaylist(ctx, rawurl)
 	if err != nil {
 		return "", 0, err

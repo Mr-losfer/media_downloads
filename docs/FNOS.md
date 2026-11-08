@@ -15,8 +15,17 @@ Media Super 的 fpk 模板在 [`deploy/fnos/`](../deploy/fnos)，打包脚本是
 
 1. 检测本机有没有 `fnpack`，没有就从 `static2.fnnas.com` 下载对应架构的 1.2.3 版本到 `build/tools/`；
 2. 交叉编译 `linux/amd64` 与 `linux/arm64`（`SKIP_BUILD=1` 可复用 `dist/` 里的产物）；
-3. 按官方结构组装，替换 `manifest` 里的版本号 / 平台 / 更新说明；
-4. 调用 `fnpack build` 生成 fpk。
+3. 下载对应架构的 **ffmpeg**（BtbN 的 linux-gpl 构建，走 gh-proxy 加速），缓存到 `build/tools/ffmpeg-<arch>/`，打进 `app/bin/ffmpeg`；
+4. 按官方结构组装，替换 `manifest` 里的版本号 / 平台 / 更新说明；
+5. 调用 `fnpack build` 生成 fpk。
+
+> 为什么要内置 ffmpeg：fnOS 的系统 PATH 里不保证有 ffmpeg，早先的包在 m3u8 下载完成后
+> 会在封装阶段报 `exec: "ffmpeg": executable file not found in $PATH`。
+> 现在 `cmd/main` 启动时把 `MS_FFMPEG` 指向 `app/bin/ffmpeg`，引擎也会在
+> 「配置路径 → 应用自带 → PATH → 常见安装位置」里自动探测。
+> 内置的 ffmpeg 解压后约 130–170MB，最终 fpk 约 67–72MB。
+> 仅调试时可 `BUNDLE_FFMPEG=0 ./scripts/build-fpk.sh` 跳过内置（包体回到 8MB 左右，
+> 但目标机器必须自己装 ffmpeg）。
 
 ---
 
@@ -48,6 +57,7 @@ mediasuper/
 │   └── config               # 应用设置「配置」：改密码 / 端口
 └── app/
     ├── server/mediasuper    # 二进制
+    ├── bin/ffmpeg           # ffmpeg（约 130–170MB，随包安装）
     └── ui/
         ├── config           # 桌面入口（iframe，端口 ${wizard_port}）
         └── images/icon-64.png, icon-256.png
