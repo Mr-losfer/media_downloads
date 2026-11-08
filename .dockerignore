@@ -1,6 +1,7 @@
 .git/
 .github/
-dist/
+dist/*
+!dist/mediasuper-linux-*
 build/
 data/
 downloads/

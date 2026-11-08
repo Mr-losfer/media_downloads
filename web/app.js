@@ -180,7 +180,7 @@ async function enterApp() {
   await Promise.all([loadTasks(), loadSettings(), loadStats(), loadSystemInfo()]);
   connectEvents();
   // 进后台先静默查一次更新，命中 5 分钟缓存时几乎零开销
-  setTimeout(() => { if (state.view === 'tasks') checkUpdate(false); }, 1200);
+  setTimeout(() => checkUpdate(false), 1200);
   $('#inUrl').focus({ preventScroll: true });
 }
 
