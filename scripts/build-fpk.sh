@@ -25,6 +25,8 @@ fi
 [ -n "$VERSION" ] || { echo "无法确定版本号" >&2; exit 1; }
 
 CHANGELOG="${NOTES:-$(git log -1 --pretty=%s 2>/dev/null || echo "Media Super v${VERSION}")}"
+# manifest 是 key=value 文本，fnpack 会把 # 当注释、= 当分隔，先把它们和换行清掉
+CHANGELOG="$(printf '%s' "$CHANGELOG" | tr '\r\n' '  ' | sed -e 's/#/ /g' -e 's/=/-/g' | cut -c1-300)"
 
 # ---------- 准备 fnpack ----------
 FNPAK="${FNPAK:-fnpack}"
@@ -82,9 +84,12 @@ build_one() {
   mkdir -p "$dir"
   cp -a "${FNOS_DIR}/." "$dir/"
   rm -f "$dir/manifest.tmpl"
+  # 更新说明来自 commit，可能含 # & / 等字符，先转义再交给 sed
+  local safe_changelog
+  safe_changelog="$(printf '%s' "$CHANGELOG" | sed -e 's/[\\&#]/\\&/g')"
   sed -e "s#@VERSION@#${VERSION}#g" \
       -e "s#@PLATFORM@#${platform}#g" \
-      -e "s#@CHANGELOG@#${CHANGELOG}#g" \
+      -e "s#@CHANGELOG@#${safe_changelog}#g" \
       "${FNOS_DIR}/manifest.tmpl" > "$dir/manifest"
 
   mkdir -p "$dir/app/server"
