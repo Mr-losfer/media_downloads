@@ -1,0 +1,7 @@
+{
+  "defaults": {
+    "run-as": "package"
+  },
+  "username": "mediasuper_user",
+  "groupname": "mediasuper_user"
+}

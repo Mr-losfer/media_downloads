@@ -1,0 +1,7 @@
+#!/bin/bash
+# 卸载前停服务
+set -u
+if [ -x "${TRIM_APPDEST}/cmd/main" ]; then
+  bash "${TRIM_APPDEST}/cmd/main" stop || true
+fi
+exit 0

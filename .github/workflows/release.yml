@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号（例如 2.1.0，不带 v）"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Resolve version
+        id: ver
+        run: |
+          raw="${{ github.event.inputs.version || github.ref_name }}"
+          echo "version=${raw#v}" >> "$GITHUB_OUTPUT"
+
+      # 先出 fpk，再让 build-release 把它一起写进 version.json / Release 附件
+      - name: Build fnOS packages
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/build-fpk.sh
+
+      - name: Build multi-arch assets and publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          ./scripts/build-release.sh --publish
+
+      - name: Update version list in repository
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add version.json docs/RELEASES.md || true
+          if git diff --cached --quiet; then
+            echo "版本列表没有变化"
+            exit 0
+          fi
+          git commit -m "chore(release): v${VERSION} 构建产物与版本列表"
+          git push origin HEAD:main || echo "推送失败（可能受分支保护），跳过"

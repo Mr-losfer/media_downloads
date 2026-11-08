@@ -1,0 +1,5 @@
+#!/bin/bash
+# 安装前准备：建好数据目录，避免首次启动因权限失败
+set -u
+mkdir -p "${TRIM_PKGVAR}/data" && chmod 0755 "${TRIM_PKGVAR}/data"
+exit 0

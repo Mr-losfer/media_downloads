@@ -1,0 +1,7 @@
+#!/bin/bash
+# 配置变更后重启，让新的端口/目录生效
+set -u
+if [ -x "${TRIM_APPDEST}/cmd/main" ]; then
+  bash "${TRIM_APPDEST}/cmd/main" restart || true
+fi
+exit 0

@@ -1,0 +1,7 @@
+#!/bin/bash
+# 升级完成：数据目录（var）原样保留，直接重启服务
+set -u
+if [ -x "${TRIM_APPDEST}/cmd/main" ]; then
+  bash "${TRIM_APPDEST}/cmd/main" start || true
+fi
+exit 0
