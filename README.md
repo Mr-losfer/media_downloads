@@ -27,6 +27,7 @@ https://github.com/Mr-losfer/media_downloads
 | 能力 | 说明 |
 |---|---|
 | 协议 | HLS(m3u8) / mp4 / flv / ts / mkv / webm / mov / 音频 |
+| 链接解析 | 插件化：首页粘贴公众号文章 `mp.weixin.qq.com/s/*` 自动解析标题/封面/作者/简介/图片，把视频直链列成可勾选下载对象（一般 mp4、无需合成）；新增站点只需注册一个插件 |
 | HLS | master 多码率自动选最高（可切最低）、`EXT-X-KEY` AES-128 解密、`EXT-X-BYTERANGE`、`EXT-X-MAP`(fMP4 init 段)、可去掉片头/片尾 N 个分片（黑屏或台标） |
 | 下载 | 分片并发池 + 单分片重试；直链 N 段 Range 并行；不支持 Range 自动降级单流 |
 | 转封装 | `-c copy` + `+faststart`（moov 前置，浏览器秒开可拖动）；失败可降级转码 |
@@ -37,6 +38,17 @@ https://github.com/Mr-losfer/media_downloads
 | 鉴权 | 后台密码（PBKDF2-SHA256 120k 轮）+ 签名 Cookie；API/MCP 用 Bearer API Key |
 | 健壮性 | 重启后未完成任务自动重排；启动清理残留分片；磁盘 <1GB 拒收新任务；设置越界自动夹紧 |
 | 界面 | 移动优先单页应用：手机端四页底部导航、桌面端（≥1024px）左侧栏导航（首页 = 按时段问候 + 下载卡片 / 任务 / 文档 / 设置）、设置内再按更新/下载/存储/通知/安全分类、提交后自动跳转任务页、夜间 / 白天一键切换（圆形水波过渡）、手机端关闭橡皮筋回弹、底部抽屉、SSE 增量刷新、内置 API / MCP 文档页、PWA 可加到主屏 |
+
+### 公众号文章怎么下载
+
+首页粘贴 `https://mp.weixin.qq.com/s/xxxx` 点「下载」，先展示解析结果（标题、封面、作者、简介、发布时间、
+文章图片与正文摘要），并把文章里的视频直链列成可勾选列表（默认全选）；点「下载选中」批量入队并跳到任务页。
+视频一般是 **mp4 直链，不走 m3u8 合成、不需要 ffmpeg**。纯图文文章会提示「没有解析到视频」。
+
+解析能力是**插件化**的：`internal/parser` 定义 `Parser` 接口与统一 `Result`，注册表按 URL 依次匹配。
+新增站点支持只需实现 `Match` / `Parse` 并注册一行，**前端与下载引擎都不用改**。当前内置插件：
+`wechat_mp`（公众号文章，调用 `t.losfer.cn` 解析服务，可用环境变量 `MS_MP_PARSE_API` 换成自建地址）。
+接口见下方 REST API 与文档页的「链接解析」一节。
 
 ## 快速开始
 
@@ -106,8 +118,10 @@ MS_ADMIN_PASS=losfer MS_SAVE_DIRS="/data/videos:本地" ./mediasuper -addr :8080
 | `MS_SPEED_LIMIT_KB` | `0` | 全局限速，0 不限 |
 | `MS_FFMPEG` | `ffmpeg` | ffmpeg 可执行路径 |
 | `MS_WEBHOOK_URL` | 空 | 事件回调地址 |
+| `MS_MP_PARSE_API` | `https://t.losfer.cn/apis/parse/mp/parseArticle` | 公众号解析服务地址，可换自建服务 |
 
 > 旧的 `VF_*` 变量仍然兼容。启动后这些值都存进了数据库，改环境变量不再生效——请到「设置」页改。
+> `MS_MP_PARSE_API` 例外：它属于解析插件，每次启动读取、不写入数据库，改完重启即可生效。
 
 ## REST API
 
@@ -133,6 +147,8 @@ MS_ADMIN_PASS=losfer MS_SAVE_DIRS="/data/videos:本地" ./mediasuper -addr :8080
 | GET/PUT | `/api/settings` | 读/改设置（PUT 只传要改的字段） |
 | GET | `/api/stats` | 统计 + 各磁盘剩余空间 |
 | GET | `/api/browse?path=/` | 列目录（选保存路径用） |
+| GET | `/api/parsers` | 列出已注册的解析插件 |
+| POST | `/api/parse` | `{"url":"…"}` → `matched:false` 或 `result`（统一解析结果） |
 | GET | `/api/system/info` | 版本、架构、运行环境 |
 | GET | `/api/system/update` | 检查更新（`?force=1` 跳过缓存） |
 | POST | `/api/system/update` | 下载并应用更新，随后重启 |
@@ -214,6 +230,7 @@ curl -s http://192.168.1.123:9099/api/tasks -H "Authorization: Bearer $KEY"
 cmd/mediasuper/         程序入口（参数解析 / -version / -stdio）
 internal/app/           装配层：数据库、设置、HTTP 服务、优雅退出
 internal/engine/        下载引擎：调度、m3u8、Range 分段、ffmpeg、SSE、Webhook
+internal/parser/        插件化链接解析：Parser 接口 / 注册表 / 公众号文章插件
 internal/server/        HTTP：REST、鉴权、MCP、静态资源、系统接口
 internal/updater/       更新检测 / 下载校验 / 热切换
 internal/version/       版本号（构建时 -ldflags 注入）

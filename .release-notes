@@ -1,5 +1,7 @@
-重要：**Git 账号已更名为 Mr-losfer**，更新检测、Release 下载与 Docker 镜像地址全部切到新账号
-fix: 更新检测 / 一键更新 / ffmpeg 组件下载的 raw、API、Release 地址改用新仓库 **Mr-losfer/media_downloads**
-fix: **Docker 镜像命名空间改为 ghcr.io/mr-losfer/media-super**（旧账号命名空间已失效，请更新 compose）
-docs: README / 部署 / 更新 / fnOS / 版本列表里的仓库链接、镜像名与示例地址同步更新
-fix: 打包脚本、Makefile、compose、OCI labels、fnOS manifest 与 git 提交邮箱同步改为新账号
+重要：**新增插件化链接解析**，首页粘贴公众号文章先解析、再把视频直链作为下载对象，普通直链流程完全不变
+feat: 识别 `https://mp.weixin.qq.com/s/*` 后展示解析结果：标题 / 封面 / 作者 / 简介 / 发布时间 / 文章图片 / 正文摘要
+feat: 文章里的 `movie_down_url` 列成可勾选视频列表（默认全选、可全不选），批量提交为普通下载任务，**一般是 mp4 直链、无需 ffmpeg 合成**
+feat: 新增 `internal/parser` 插件框架（`Parser` 接口 / 注册表 / 统一 `Result`），后续增加解析站点只需实现并注册一行，**前端与下载引擎都不用改**
+feat: 新增 `GET /api/parsers` 与 `POST /api/parse`，文档页、README、架构文档补充接口与扩展说明
+fix: 解析服务空文章 / 业务失败 / 非 JSON / 超时均有明确提示；外部图片、正文与链接做安全过滤后再渲染
+feat: 解析服务地址可用环境变量 `MS_MP_PARSE_API` 换成自建服务；新增 10 项解析插件单测（mock 解析服务）

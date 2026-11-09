@@ -132,7 +132,9 @@
         </details>
       </form>
 
-      <p class="home-tip">提交后会自动跳到「任务」页，随时看进度。</p>
+      <!-- 插件解析结果：命中公众号等插件时由 app.js 填充，普通直链不显示 -->
+      <div class="parse-card card hidden" id="parseCard" aria-live="polite"></div>
+      <p class="home-tip" id="homeTip">提交后会自动跳到「任务」页，随时看进度。</p>
     </section>
 
     <!-- ---------------- 任务 ---------------- -->
@@ -188,6 +190,25 @@
             <dt>API Key</dt><dd>「设置」页可查看、复制</dd>
             <dt>编码</dt><dd>请求与响应均为 <code>application/json; charset=utf-8</code></dd>
           </dl>
+        </div>
+
+        <div class="doc-section">
+          <h3>链接解析（插件化）</h3>
+          <p>首页粘贴 <code>https://mp.weixin.qq.com/s/…</code> 时，会先交给解析插件：展示文章标题、封面、作者、简介、
+             发布时间、图片与正文摘要，并把解析出的视频直链列成可勾选的下载对象（一般是 mp4，<b>无需 ffmpeg 合成</b>）。
+             普通直链不受影响，仍按原流程直接下载。</p>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre># 列出已注册的解析插件
+curl "<span data-base>/api/parsers" -H "Authorization: Bearer $VF_KEY"
+
+# 统一解析入口：未命中 {"matched":false}，命中返回 result
+curl -X POST "<span data-base>/api/parse" \
+  -H "Authorization: Bearer $VF_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://mp.weixin.qq.com/s/epF_Tih8U0wNUUazf0TrsA"}'</pre></div>
+          <div class="note">命中的插件由服务端注册表决定，前端只认统一的 <code>result</code> 结构
+             （<code>title / cover / author / description / images / items</code>）。
+             新增站点支持只需在 <code>internal/parser</code> 实现 <code>Parser</code> 接口并注册一行，<b>不用改前端与下载引擎</b>。
+             公众号解析服务地址可用环境变量 <code>MS_MP_PARSE_API</code> 换成自建服务。</div>
         </div>
 
         <div class="doc-section">
@@ -260,6 +281,8 @@ curl "<span data-base>/api/tasks/&lt;id&gt;/download?token=$VF_KEY" -O -J</pre><
                 <tr><td><span class="m get">GET</span></td><td class="mono">/api/settings</td><td>读取设置</td></tr>
                 <tr><td><span class="m">PUT</span></td><td class="mono">/api/settings</td><td>修改设置（只传要改的字段）</td></tr>
                 <tr><td><span class="m get">GET</span></td><td class="mono">/api/browse</td><td>列目录（选保存路径）</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/parsers</td><td>列出已注册的解析插件</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/parse</td><td>插件化解析链接（公众号等）</td></tr>
                 <tr><td><span class="m get">GET</span></td><td class="mono">/api/system/info</td><td>版本、架构、运行环境</td></tr>
                 <tr><td><span class="m get">GET</span></td><td class="mono">/api/system/update</td><td>检查更新（<code>?force=1</code> 跳过缓存）</td></tr>
                 <tr><td><span class="m">POST</span></td><td class="mono">/api/system/update</td><td>一键更新并重启</td></tr>

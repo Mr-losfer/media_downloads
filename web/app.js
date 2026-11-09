@@ -131,7 +131,9 @@ const state = {
   view: 'home',
   doc: 'api',
   setTab: 'update',
-  es: null
+  es: null,
+  parse: null,        // 当前插件解析结果
+  parseInput: ''      // 触发该结果的原始输入，用来判断输入框是否已改
 };
 let visIds = [];
 let renderQueued = false;
@@ -517,35 +519,243 @@ function connectEvents() {
   });
 }
 
-/* ---------------- 提交任务 ---------------- */
+/* ---------------- 插件解析 + 提交任务 ----------------
+   统一入口：先 POST /api/parse 让服务端插件注册表判断链接类型。
+   - matched=false：普通直链，照旧一次 POST /api/tasks
+   - matched=true ：渲染解析结果卡片，用户勾选视频后批量提交
+   以后新增解析插件，前端这段逻辑不用改（只认统一 Result）。          */
+function safeURL(s) {
+  s = String(s == null ? '' : s).trim();
+  return /^https?:\/\//i.test(s) ? s : '';
+}
+function hostOf(u) {
+  try { return new URL(u).hostname; } catch (e) { return ''; }
+}
+function fmtPublishTime(v) {
+  v = String(v == null ? '' : v).trim();
+  if (!v) return '';
+  let ts = 0;
+  if (/^\d{10}$/.test(v)) ts = Number(v) * 1000;
+  else if (/^\d{13}$/.test(v)) ts = Number(v);
+  if (ts) {
+    const d = new Date(ts);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleString('zh-CN', {
+        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+      });
+    }
+  }
+  return v;
+}
+function collectOpts() {
+  const o = {};
+  const title = $('#inTitle').value.trim();
+  if (title) o.title = title;
+  const dir = $('#inDir').value;
+  if (dir) o.save_dir = dir;
+  const ref = $('#inReferer').value.trim(), ck = $('#inCookie').value.trim();
+  if (ref || ck) {
+    o.headers = {};
+    if (ref) o.headers.Referer = ref;
+    if (ck) o.headers.Cookie = ck;
+  }
+  return o;
+}
+function resetInputs() {
+  $('#inUrl').value = '';
+  $('#inTitle').value = '';
+  $('#inReferer').value = '';
+  $('#inCookie').value = '';
+}
+function hideParseCard() {
+  state.parse = null;
+  state.parseInput = '';
+  const c = $('#parseCard');
+  if (c) { c.classList.add('hidden'); c.innerHTML = ''; }
+  const home = $('#viewHome');
+  if (home) home.classList.remove('has-parse');
+  const tip = $('#homeTip');
+  if (tip) tip.classList.remove('hidden');
+}
+function parseChecked() { return $$('#parseCard input[data-pi]:checked'); }
+function paintParseCount() {
+  const n = parseChecked().length;
+  const el = $('#parseCount');
+  if (el) el.textContent = '已选 ' + n + ' 项';
+  const btn = $('#parseCard [data-pa="download"]');
+  if (btn) { btn.disabled = n === 0; btn.textContent = n ? '下载选中 (' + n + ')' : '下载选中'; }
+}
+
+function renderParseCard(res, inputURL) {
+  const r = res || {};
+  state.parse = r;
+  state.parseInput = inputURL || '';
+  const card = $('#parseCard');
+  const cover = safeURL(r.cover);
+  const imgs = (r.images || []).map(safeURL).filter(Boolean).slice(0, 12);
+  const items = r.items || [];
+  const ex = r.extra || {};
+  const pt = fmtPublishTime(r.publish_time);
+  const src = safeURL(r.source_url);
+
+  let h = '<div class="parse-head">';
+  if (cover) h += '<img class="parse-cover" src="' + esc(cover) + '" alt="" loading="lazy" referrerpolicy="no-referrer">';
+  h += '<div class="parse-head-txt">';
+  h += '<span class="parse-badge">' + ico('link') + esc(r.plugin_name || '解析插件') + '</span>';
+  h += '<div class="parse-title">' + esc(r.title || '未获取到文章标题') + '</div>';
+  h += '<div class="parse-meta">';
+  if (r.author) h += '<span>作者 ' + esc(r.author) + '</span>';
+  if (pt) h += '<span>' + esc(pt) + '</span>';
+  if (src) h += '<a href="' + esc(src) + '" target="_blank" rel="noopener noreferrer">原文 ↗</a>';
+  h += '</div></div></div>';
+
+  if (r.description) h += '<p class="parse-desc">' + esc(r.description) + '</p>';
+
+  h += '<div class="parse-body"><div class="parse-stat">';
+  h += '<span>视频 <b>' + items.length + '</b></span>';
+  h += '<span>图片 <b>' + (Number(ex.image_count) || imgs.length) + '</b></span>';
+  if (Number(ex.audio_count) > 0) h += '<span>音频 <b>' + Number(ex.audio_count) + '</b></span>';
+  if (r.content_len) h += '<span>正文 <b>' + fmtBytes(r.content_len) + '</b></span>';
+  if (Number(ex.runtime_ms) > 0) h += '<span>解析耗时 <b>' + Math.round(ex.runtime_ms) + ' ms</b></span>';
+  h += '</div>';
+
+  h += '<div class="parse-sec-head">';
+  h += '<span class="parse-sec-title">视频列表（' + items.length + '）· 一般为 MP4 直链，无需合成</span>';
+  h += '<span class="parse-sec-act">';
+  h += '<button type="button" class="parse-mini" data-pa="all">全选</button>';
+  h += '<button type="button" class="parse-mini" data-pa="none">全不选</button>';
+  h += '</span></div>';
+
+  if (items.length) {
+    h += '<div class="parse-items">';
+    items.forEach((it, i) => {
+      const page = safeURL(it.page);
+      const sub = [it.id || '', it.format || 'mp4', hostOf(it.url)].filter(Boolean).join(' · ');
+      h += '<div class="parse-item"><label class="parse-item-pick">';
+      h += '<input type="checkbox" data-pi="' + i + '" checked>';
+      const itemTitle = it.title || ('视频 ' + (i + 1));
+      h += '<span class="parse-item-main"><span class="parse-item-title" title="' + esc(itemTitle) + '">' + esc(itemTitle) + '</span>';
+      h += '<span class="parse-item-sub">' + esc(sub) + '</span></span></label>';
+      if (page) h += '<a class="parse-item-link" href="' + esc(page) + '" target="_blank" rel="noopener noreferrer" title="打开原始播放页" aria-label="打开原始播放页">' + ico('play') + '</a>';
+      h += '</div>';
+    });
+    h += '</div>';
+  } else {
+    h += '<div class="parse-empty">这篇文章没有解析到视频下载链接。<br>可能是纯图文文章、链接已失效，或视频受版权限制。</div>';
+  }
+
+  if (imgs.length) {
+    h += '<details class="parse-fold"><summary>文章图片（' + imgs.length + '）</summary><div class="parse-imgs">';
+    imgs.forEach((u) => {
+      h += '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer"><img src="' + esc(u) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></a>';
+    });
+    h += '</div></details>';
+  }
+  if (r.content_text) {
+    h += '<details class="parse-fold"><summary>正文摘要（' + r.content_text.length + ' 字）</summary>';
+    h += '<div class="parse-content">' + esc(r.content_text) + '</div></details>';
+  }
+  if (ex.api_desc) h += '<p class="parse-note">' + esc(ex.api_desc) + '</p>';
+  h += '</div>';
+
+  h += '<div class="parse-actions">';
+  h += '<span class="parse-count" id="parseCount">已选 0 项</span>';
+  h += '<span class="grow"></span>';
+  h += '<button type="button" class="ghost" data-pa="cancel">取消</button>';
+  h += '<button type="button" class="primary" data-pa="download">下载选中</button>';
+  h += '</div>';
+
+  card.innerHTML = h;
+  card.classList.remove('hidden');
+  const home = $('#viewHome');
+  if (home) home.classList.add('has-parse');
+  const tip = $('#homeTip');
+  if (tip) tip.classList.add('hidden');
+  // 封面 / 缩略图拉不到时静默移除，不留破图
+  $$('#parseCard img').forEach((img) => img.addEventListener('error', () => img.remove(), { once: true }));
+  paintParseCount();
+}
+
+async function submitDirect(url, opts) {
+  const body = Object.assign({ url: url }, opts);
+  const t = await api('/api/tasks', { method: 'POST', body: body });
+  state.tasks.set(t.id, t);
+  resetInputs();
+  hideParseCard();
+  renderList(true);
+  toast('已加入队列', 'ok');
+  jumpToTask(t.id);
+}
+
+async function submitParsedItems() {
+  const r = state.parse;
+  if (!r) return;
+  const picked = parseChecked().map((c) => (r.items || [])[Number(c.dataset.pi)]).filter(Boolean);
+  if (!picked.length) { toast('请先勾选要下载的视频', 'err'); return; }
+  const opts = collectOpts();
+  const btn = $('#parseCard [data-pa="download"]');
+  if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
+  let ok = 0, fail = 0, firstId = '', lastErr = '';
+  for (const it of picked) {
+    const body = { url: it.url, title: it.title || '' };
+    if (opts.save_dir) body.save_dir = opts.save_dir;
+    // 用户在「更多选项」里填的请求头优先于插件的建议头
+    const headers = Object.assign({}, it.headers || {}, opts.headers || {});
+    if (Object.keys(headers).length) body.headers = headers;
+    try {
+      const t = await api('/api/tasks', { method: 'POST', body: body });
+      state.tasks.set(t.id, t);
+      if (!firstId) firstId = t.id;
+      ok++;
+    } catch (ex) { fail++; lastErr = ex.message || '请求失败'; }
+  }
+  resetInputs();
+  hideParseCard();
+  renderList(true);
+  if (ok) {
+    toast('已加入 ' + ok + ' 个下载任务' + (fail ? '，' + fail + ' 个失败' : ''), fail ? 'err' : 'ok');
+    jumpToTask(firstId);
+  } else {
+    toast('提交失败：' + (lastErr || '请检查保存目录'), 'err');
+  }
+}
+
+$('#parseCard').addEventListener('change', (e) => {
+  if (e.target && e.target.matches && e.target.matches('input[data-pi]')) paintParseCount();
+});
+$('#parseCard').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pa]');
+  if (!b) return;
+  const act = b.dataset.pa;
+  if (act === 'all' || act === 'none') {
+    $$('#parseCard input[data-pi]').forEach((c) => { c.checked = act === 'all'; });
+    paintParseCount();
+  } else if (act === 'cancel') {
+    hideParseCard();
+    toast('已取消解析结果', 'ok');
+  } else if (act === 'download') {
+    submitParsedItems();
+  }
+});
+// 输入框改了链接就收起旧结果，避免误把上一篇文章的视频提交掉
+$('#inUrl').addEventListener('input', () => {
+  if (state.parse && $('#inUrl').value.trim() !== state.parseInput) hideParseCard();
+});
+
 $('#submitForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const url = $('#inUrl').value.trim();
   if (!url) { $('#inUrl').focus(); return; }
   const btn = $('#btnSubmit');
-  btn.disabled = true; btn.textContent = '提交中…';
+  btn.disabled = true; btn.textContent = '检查中…';
   try {
-    const body = { url: url };
-    const title = $('#inTitle').value.trim();
-    if (title) body.title = title;
-    const dir = $('#inDir').value;
-    if (dir) body.save_dir = dir;
-    const ref = $('#inReferer').value.trim();
-    const ck = $('#inCookie').value.trim();
-    if (ref || ck) {
-      body.headers = {};
-      if (ref) body.headers.Referer = ref;
-      if (ck) body.headers.Cookie = ck;
+    const pr = await api('/api/parse', { method: 'POST', body: { url: url } });
+    if (pr && pr.matched) {
+      // 卡片本身就是反馈，不再弹 toast：手机端 toast 会盖住视频列表
+      renderParseCard(pr.result || {}, url);
+      return;
     }
-    const t = await api('/api/tasks', { method: 'POST', body: body });
-    state.tasks.set(t.id, t);
-    $('#inUrl').value = '';
-    $('#inTitle').value = '';
-    $('#inReferer').value = '';
-    $('#inCookie').value = '';
-    renderList(true);
-    toast('已加入队列', 'ok');
-    jumpToTask(t.id);
+    await submitDirect(url, collectOpts());
   } catch (ex) {
     toast(ex.message, 'err');
   } finally {
@@ -1364,7 +1574,7 @@ window.addEventListener('pageshow', (e) => { if (e.persisted) route(); });
   document.addEventListener('touchmove', (e) => {
     if (e.touches.length !== 1) return;
     const t = e.target;
-    if (t && t.closest && t.closest('.sheet, .sheet-mask, .code pre, .notes-pre, .chg-box, textarea')) return;
+    if (t && t.closest && t.closest('.sheet, .sheet-mask, .code pre, .notes-pre, .chg-box, textarea, .parse-items, .parse-content, .parse-imgs')) return;
     const el = document.scrollingElement || document.documentElement;
     const dy = e.touches[0].clientY - startY;
     const atTop = el.scrollTop <= 0;

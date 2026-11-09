@@ -4,6 +4,7 @@
 cmd/mediasuper/         入口：flag 解析、-version、-stdio
 internal/app/           装配层：开库、初始化设置/密码、启动 HTTP、优雅退出、banner
 internal/engine/        下载引擎 + 持久化 + 事件广播
+internal/parser/        插件化链接解析（Parser 接口 / 注册表 / 公众号插件）
 internal/server/        HTTP 层：REST、鉴权、MCP、静态资源、系统接口
 internal/updater/       更新检测、下载校验、热切换
 internal/version/       版本号常量（构建时注入）
@@ -16,12 +17,15 @@ scripts/                发布脚本
 依赖方向是单向的：
 
 ```
-cmd → app → server → engine → （store / model 同包）
-                ↘ updater → version
-                        web ← app
+cmd → app → server ─┬→ engine → （store / model 同包）
+                    ├→ parser  （独立包，不依赖 engine / server）
+                    └→ updater → version
+app → web
 ```
 
-`engine` 不 import `server`，`server` 不碰 bbolt；这样加 CLI、加 MQTT、换 HTTP 框架都不用动下载逻辑。
+`engine` 不 import `server`，`server` 不碰 bbolt；`parser` 也不依赖 `engine`，
+只输出统一的 `Result`（展示信息 + 可下载对象），由 `server` 交给前端。
+这样加 CLI、加 MQTT、换 HTTP 框架、加解析站点都不用动下载逻辑。
 
 ---
 
@@ -61,12 +65,38 @@ queued ──► running ──► merging ──► completed
 | `api.go` | 路由注册、任务增删改查、文件流（Range）、SSE、静态资源 |
 | `auth.go` | PBKDF2 密码、HMAC 签名会话 Cookie、API Key 校验 |
 | `mcp.go` | JSON-RPC 2.0 / MCP 工具实现 |
-| `system.go` | 版本信息、检查更新、一键更新、改密码 |
+| `system.go` | 版本信息、检查更新、一键更新、改密码、ffmpeg 组件 |
+| `parse.go` | `/api/parsers` 插件列表、`/api/parse` 统一解析入口 |
 | `static.go` | 把 `web.FS` 读进内存 map（合计 < 300KB） |
 | `stdio.go` | 把 stdio 的 JSON-RPC 转发给远端 HTTP（Claude Desktop 兼容） |
 
 鉴权接受三种凭证：会话 Cookie、`Authorization: Bearer <API Key>`、`?token=<API Key>`。
 最后一种给 `<video>` 和 `EventSource` 用，它们没法自定义请求头。
+
+### `internal/parser`
+
+链接解析做成插件注册表，与下载引擎完全解耦：
+
+| 文件 | 内容 |
+|---|---|
+| `parser.go` | `Parser` 接口、`Result` / `Item` 统一结构、`Registry`、`Default()` |
+| `wechat_mp.go` | 公众号文章插件：匹配 `mp.weixin.qq.com/s/*`，调解析服务，把 `movie_down_url` 映射成视频 Item |
+| `parser_test.go` | httptest mock 解析服务，覆盖匹配、字段映射、失败与空数据 |
+
+首页提交流程：
+
+```
+POST /api/parse {url}
+  ├─ Registry.Match 无命中 → {matched:false} → 前端照旧 POST /api/tasks（直链下载）
+  └─ 命中插件 → Parse() → {matched:true, result} → 前端展示 result
+                                              → 勾选 items → 逐个 POST /api/tasks
+```
+
+`Match` 只做本地字符串判断（零网络开销），`Parse` 才访问外部服务（15s 客户端超时、8MB 响应上限，
+超时会翻译成「解析服务响应超时，请稍后重试」而不是底层英文报错）。
+`Result` 是前端唯一认识的形状，插件特有字段放 `Extra`；新增站点只需实现接口并在 `Default()` 里
+`Register` 一行，不用改路由、前端或下载引擎。解析出的 `Item.URL` 走现有 `downloadDirect`，
+一般是 mp4 直链，不经过 m3u8 / ffmpeg。
 
 ### `internal/updater`
 

@@ -109,6 +109,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /api/settings", s.needAuth(s.handleUpdateSettings))
 	mux.HandleFunc("GET /api/browse", s.needAuth(s.handleBrowse))
 
+	// 链接解析（插件化）：列出已注册插件 / 统一解析入口
+	mux.HandleFunc("GET /api/parsers", s.needAuth(s.handleListParsers))
+	mux.HandleFunc("POST /api/parse", s.needAuth(s.handleParse))
+
 	// 系统：版本信息 / 更新检测 / 一键更新 / 改管理员密码
 	mux.HandleFunc("GET /api/system/info", s.needAuth(s.handleSystemInfo))
 	mux.HandleFunc("GET /api/system/update", s.needAuth(s.handleCheckUpdate))
