@@ -4,6 +4,7 @@
 
 | 版本 | 构建时间 | 架构 | 镜像 | 说明 |
 | --- | --- | --- | --- | --- |
+| [v2.5.5](https://github.com/losfer778/media_downloads/releases/tag/v2.5.5) | 2026-11-09T10:32:36Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/losfer778/media-super:2.5.5` | 重要：修复 fnOS fpk 安装报「缺少生命周期脚本 /cmd/main，安装包可能不完整」，安装不再被中止 |
 | [v2.5.4](https://github.com/losfer778/media_downloads/releases/tag/v2.5.4) | 2026-11-08T19:09:03Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/losfer778/media-super:2.5.4` | 重要：进入首页自动弹出新版本提示，可直接更新或跳过当前版本 |
 | [v2.5.3](https://github.com/losfer778/media_downloads/releases/tag/v2.5.3) | 2026-11-08T18:07:21Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/losfer778/media-super:2.5.3` | feat: 桌面端改左侧栏导航，fpk 内置 ffmpeg 修复封装失败 |
 | [v2.5.2](https://github.com/losfer778/media_downloads/releases/tag/v2.5.2) | 2026-11-08T16:44:28Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/losfer778/media-super:2.5.2` | feat: 设置页按分类分 tab，新增 m3u8 去除片头片尾 |
