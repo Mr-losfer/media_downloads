@@ -1,23 +1,23 @@
 {
-  "version": "2.5.5",
-  "released_at": "2026-11-09T10:32:36Z",
-  "notes": "重要：**修复 fnOS fpk 安装报「缺少生命周期脚本 /cmd/main，安装包可能不完整」**，安装不再被中止\nfix: 安装回调不再因找不到 cmd/main 直接 exit 1，改用脚本自身目录等多路径定位，并降级直写配置保证安装完成\nfix: fpk 不再内置 168MB 静态 ffmpeg，安装包从 72MB 回到 **3MB 级**，规避旧版 fnOS 上传超时截断导致生命周期脚本没落盘\nfeat: ffmpeg 改为**首次启动后台自动补齐**（gh-proxy 优先、SHA256 校验、只下一次），设置页显示进度并可手动重试\nfix: 升级 / 卸载 / 配置回调同步修正 cmd/main 定位，改端口、改密码、停服务恢复正常\nfeat: 补齐 wizard/uninstall 卸载向导，打包新增解包自检（9 个脚本 / 权限 / 校验和 / JSON / 体积守卫）",
+  "version": "2.5.6",
+  "released_at": "2026-11-09T11:30:50Z",
+  "notes": "重要：**Git 账号已更名为 Mr-losfer**，更新检测、Release 下载与 Docker 镜像地址全部切到新账号\nfix: 更新检测 / 一键更新 / ffmpeg 组件下载的 raw、API、Release 地址改用新仓库 **Mr-losfer/media_downloads**\nfix: **Docker 镜像命名空间改为 ghcr.io/mr-losfer/media-super**（旧 losfer778 命名空间已失效，请更新 compose）\ndocs: README / 部署 / 更新 / fnOS / 版本列表里的仓库链接、镜像名与示例地址同步更新\nfix: 打包脚本、Makefile、compose、OCI labels、fnOS manifest 与 git 提交邮箱同步改为新账号",
   "repo": "https://github.com/Mr-losfer/media_downloads",
-  "image": "ghcr.io/mr-losfer/media-super:2.5.5",
+  "image": "ghcr.io/mr-losfer/media-super:2.5.6",
   "assets": {
-    "linux-amd64": { "name": "mediasuper-linux-amd64", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/mediasuper-linux-amd64", "sha256": "6f72fa16cb8c6e8e40742ebe52373321a887725c911e41de8c09a627f5bcee4b", "size": 7467192 },
-    "linux-arm64": { "name": "mediasuper-linux-arm64", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/mediasuper-linux-arm64", "sha256": "e8451c112212e21748cd6ce8e6a2f3fc71dea0123f5767cb1fb1c53e68a0c296", "size": 7012536 },
-    "linux-armv7": { "name": "mediasuper-linux-armv7", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/mediasuper-linux-armv7", "sha256": "364381e3e0d32ad647b8610628eab43d7444f1f9ecfbbebe8063c8825dd2d43e", "size": 7274680 },
-    "linux-armv6": { "name": "mediasuper-linux-armv6", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/mediasuper-linux-armv6", "sha256": "d9b0ece199e394815ff934e1636df2ee64b9cc62e04a3b9ff004746e27127b23", "size": 7274680 },
-    "linux-386": { "name": "mediasuper-linux-386", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/mediasuper-linux-386", "sha256": "4e8e8a804f39bf243e9f9cb18bcc601e967f1ac26d9f4fc951ed535de74c2b90", "size": 7196856 }
+    "linux-amd64": { "name": "mediasuper-linux-amd64", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper-linux-amd64", "sha256": "174831581bc0d8cd86fde4e63ea0f5bde08bdd835a99c9429a311c0723d19795", "size": 7467192 },
+    "linux-arm64": { "name": "mediasuper-linux-arm64", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper-linux-arm64", "sha256": "f50e6772b1b560acd16e9dc758f6f19db46209b5c8b0e6e42b154b89732cf47c", "size": 7012536 },
+    "linux-armv7": { "name": "mediasuper-linux-armv7", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper-linux-armv7", "sha256": "b6db8a596f2b415a2203092a4da3abb2a1b41b93eac874119021d8cf41bff792", "size": 7274680 },
+    "linux-armv6": { "name": "mediasuper-linux-armv6", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper-linux-armv6", "sha256": "51a4dca4186fbbb89d9de81f124175305df7311a31ccdb44c5fba3fbb0f200c6", "size": 7274680 },
+    "linux-386": { "name": "mediasuper-linux-386", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper-linux-386", "sha256": "7e9f72ff8a13fe32d9bdcfe80defaecb2e9601fdb6c764537de9be4f8cb889c0", "size": 7196856 }
   },
   "ffmpeg": {
-    "linux-amd64": { "name": "ffmpeg-linux-amd64.gz", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/ffmpeg-linux-amd64.gz", "sha256": "ee2fd27e591a79bc5349449b6cda50f776019744eb984ef8249c6fd5ed966d63", "size": 69845677 },
-    "linux-arm64": { "name": "ffmpeg-linux-arm64.gz", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/ffmpeg-linux-arm64.gz", "sha256": "690a090f5d66fbd4ec679642cec1ad6ca41a0f4006c941ec7f98c2e277b33500", "size": 62937510 }
+    "linux-amd64": { "name": "ffmpeg-linux-amd64.gz", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/ffmpeg-linux-amd64.gz", "sha256": "3ccb5d3248782b080a11b9435535d92af9826a51d13e8ceda8e11f02463bf1f0", "size": 69845677 },
+    "linux-arm64": { "name": "ffmpeg-linux-arm64.gz", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/ffmpeg-linux-arm64.gz", "sha256": "7247538bf0159a760199a3727c3906877cce397c0aac9cb13edd6ad5d33ae5f5", "size": 62937510 }
   },
   "fpk": {
-    "mediasuper_2.5.5_fnos-arm.fpk": { "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/mediasuper_2.5.5_fnos-arm.fpk", "sha256": "bd8d456547f15a52188f08279040963c791df2947c645de541855cf782d291b4", "size": 2975883 },
-    "mediasuper_2.5.5_fnos-x86.fpk": { "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/mediasuper_2.5.5_fnos-x86.fpk", "sha256": "27a943b60d372e77214cb3a439ce8da45f97fdb1e5117391ce85d9b14e1a3d35", "size": 3231167 }
+    "mediasuper_2.5.6_fnos-arm.fpk": { "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper_2.5.6_fnos-arm.fpk", "sha256": "653c97e845abdd2bc2c643bc50139dc418f55210d2f84b88fb5ea9693335fab6", "size": 2975789 },
+    "mediasuper_2.5.6_fnos-x86.fpk": { "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper_2.5.6_fnos-x86.fpk", "sha256": "57ef83fdefeb3261e8cb614b4c88945f9d89331e10677a4e05e1f3af1801d7a0", "size": 3231230 }
   },
-  "checksums": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/SHA256SUMS"
+  "checksums": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/SHA256SUMS"
 }
