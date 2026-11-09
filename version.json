@@ -1,23 +1,23 @@
 {
-  "version": "2.5.6",
-  "released_at": "2026-11-09T11:30:50Z",
-  "notes": "重要：**Git 账号已更名为 Mr-losfer**，更新检测、Release 下载与 Docker 镜像地址全部切到新账号\nfix: 更新检测 / 一键更新 / ffmpeg 组件下载的 raw、API、Release 地址改用新仓库 **Mr-losfer/media_downloads**\nfix: **Docker 镜像命名空间改为 ghcr.io/mr-losfer/media-super**（旧账号命名空间已失效，请更新 compose）\ndocs: README / 部署 / 更新 / fnOS / 版本列表里的仓库链接、镜像名与示例地址同步更新\nfix: 打包脚本、Makefile、compose、OCI labels、fnOS manifest 与 git 提交邮箱同步改为新账号",
+  "version": "2.5.7",
+  "released_at": "2026-11-09T18:38:03Z",
+  "notes": "重要：**新增插件化链接解析**，首页粘贴公众号文章先解析、再把视频直链作为下载对象，普通直链流程完全不变\nfeat: 识别 `https://mp.weixin.qq.com/s/*` 后展示解析结果：标题 / 封面 / 作者 / 简介 / 发布时间 / 文章图片 / 正文摘要\nfeat: 文章里的 `movie_down_url` 列成可勾选视频列表（默认全选、可全不选），批量提交为普通下载任务，**一般是 mp4 直链、无需 ffmpeg 合成**\nfeat: 新增 `internal/parser` 插件框架（`Parser` 接口 / 注册表 / 统一 `Result`），后续增加解析站点只需实现并注册一行，**前端与下载引擎都不用改**\nfeat: 新增 `GET /api/parsers` 与 `POST /api/parse`，文档页、README、架构文档补充接口与扩展说明\nfix: 解析服务空文章 / 业务失败 / 非 JSON / 超时均有明确提示；外部图片、正文与链接做安全过滤后再渲染\nfeat: 解析服务地址可用环境变量 `MS_MP_PARSE_API` 换成自建服务；新增 10 项解析插件单测（mock 解析服务）",
   "repo": "https://github.com/Mr-losfer/media_downloads",
-  "image": "ghcr.io/mr-losfer/media-super:2.5.6",
+  "image": "ghcr.io/mr-losfer/media-super:2.5.7",
   "assets": {
-    "linux-amd64": { "name": "mediasuper-linux-amd64", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper-linux-amd64", "sha256": "174831581bc0d8cd86fde4e63ea0f5bde08bdd835a99c9429a311c0723d19795", "size": 7467192 },
-    "linux-arm64": { "name": "mediasuper-linux-arm64", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper-linux-arm64", "sha256": "f50e6772b1b560acd16e9dc758f6f19db46209b5c8b0e6e42b154b89732cf47c", "size": 7012536 },
-    "linux-armv7": { "name": "mediasuper-linux-armv7", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper-linux-armv7", "sha256": "b6db8a596f2b415a2203092a4da3abb2a1b41b93eac874119021d8cf41bff792", "size": 7274680 },
-    "linux-armv6": { "name": "mediasuper-linux-armv6", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper-linux-armv6", "sha256": "51a4dca4186fbbb89d9de81f124175305df7311a31ccdb44c5fba3fbb0f200c6", "size": 7274680 },
-    "linux-386": { "name": "mediasuper-linux-386", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper-linux-386", "sha256": "7e9f72ff8a13fe32d9bdcfe80defaecb2e9601fdb6c764537de9be4f8cb889c0", "size": 7196856 }
+    "linux-amd64": { "name": "mediasuper-linux-amd64", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/mediasuper-linux-amd64", "sha256": "e764cd19461cb132bdcc6aeca3d7f9df5011a591095422e236f5f76006e08d26", "size": 7831736 },
+    "linux-arm64": { "name": "mediasuper-linux-arm64", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/mediasuper-linux-arm64", "sha256": "15ca14eb09ddb10ea44e8a1c0987eec9b3beeca00add73a784b8e8e1ad1d8cfe", "size": 7405752 },
+    "linux-armv7": { "name": "mediasuper-linux-armv7", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/mediasuper-linux-armv7", "sha256": "b7287ac2919b66536fd1200d1f019ab03834b301df549a43b1ea5431278a8a25", "size": 7602360 },
+    "linux-armv6": { "name": "mediasuper-linux-armv6", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/mediasuper-linux-armv6", "sha256": "95108ba2633b5b9c705afa4c43d83a4de7c2be82eb4507ecff27103677ddc41b", "size": 7602360 },
+    "linux-386": { "name": "mediasuper-linux-386", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/mediasuper-linux-386", "sha256": "aaf702b76afb65774dc76f23becdd21ca87e30bd65c2ffe1cce8b65825aec6dc", "size": 7524536 }
   },
   "ffmpeg": {
-    "linux-amd64": { "name": "ffmpeg-linux-amd64.gz", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/ffmpeg-linux-amd64.gz", "sha256": "3ccb5d3248782b080a11b9435535d92af9826a51d13e8ceda8e11f02463bf1f0", "size": 69845677 },
-    "linux-arm64": { "name": "ffmpeg-linux-arm64.gz", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/ffmpeg-linux-arm64.gz", "sha256": "7247538bf0159a760199a3727c3906877cce397c0aac9cb13edd6ad5d33ae5f5", "size": 62937510 }
+    "linux-amd64": { "name": "ffmpeg-linux-amd64.gz", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/ffmpeg-linux-amd64.gz", "sha256": "00195ef71a5cb5c0c5aa18b4d2b34c6ff67cf6b83550abb1fe5f9797ef4e3ac0", "size": 69850761 },
+    "linux-arm64": { "name": "ffmpeg-linux-arm64.gz", "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/ffmpeg-linux-arm64.gz", "sha256": "94ef25e63db32980ee7ce99010b14510ab51ce7e82a6e0a49de63a58aa7b204c", "size": 62937903 }
   },
   "fpk": {
-    "mediasuper_2.5.6_fnos-arm.fpk": { "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper_2.5.6_fnos-arm.fpk", "sha256": "653c97e845abdd2bc2c643bc50139dc418f55210d2f84b88fb5ea9693335fab6", "size": 2975789 },
-    "mediasuper_2.5.6_fnos-x86.fpk": { "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/mediasuper_2.5.6_fnos-x86.fpk", "sha256": "57ef83fdefeb3261e8cb614b4c88945f9d89331e10677a4e05e1f3af1801d7a0", "size": 3231230 }
+    "mediasuper_2.5.7_fnos-arm.fpk": { "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/mediasuper_2.5.7_fnos-arm.fpk", "sha256": "afb5d0f0bc659c929201753b4772929e69087daf70a516bcac021d42d358d59c", "size": 3112083 },
+    "mediasuper_2.5.7_fnos-x86.fpk": { "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/mediasuper_2.5.7_fnos-x86.fpk", "sha256": "5708a250384d3acdc9bf9721461d292b0bea259f08a408ffb303b3b8973d29f5", "size": 3375601 }
   },
-  "checksums": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.6/SHA256SUMS"
+  "checksums": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/SHA256SUMS"
 }

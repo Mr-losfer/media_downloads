@@ -4,6 +4,7 @@
 
 | 版本 | 构建时间 | 架构 | 镜像 | 说明 |
 | --- | --- | --- | --- | --- |
+| [v2.5.7](https://github.com/Mr-losfer/media_downloads/releases/tag/v2.5.7) | 2026-11-09T18:38:03Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/mr-losfer/media-super:2.5.7` | 重要：新增插件化链接解析，首页粘贴公众号文章先解析、再把视频直链作为下载对象，普通直链流程完全不变 |
 | [v2.5.6](https://github.com/Mr-losfer/media_downloads/releases/tag/v2.5.6) | 2026-11-09T11:30:50Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/mr-losfer/media-super:2.5.6` | 重要：Git 账号已更名为 Mr-losfer，更新检测、Release 下载与 Docker 镜像地址全部切到新账号 |
 | [v2.5.5](https://github.com/Mr-losfer/media_downloads/releases/tag/v2.5.5) | 2026-11-09T10:32:36Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/mr-losfer/media-super:2.5.5` | 重要：修复 fnOS fpk 安装报「缺少生命周期脚本 /cmd/main，安装包可能不完整」，安装不再被中止 |
 | [v2.5.4](https://github.com/Mr-losfer/media_downloads/releases/tag/v2.5.4) | 2026-11-08T19:09:03Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/mr-losfer/media-super:2.5.4` | 重要：进入首页自动弹出新版本提示，可直接更新或跳过当前版本 |
