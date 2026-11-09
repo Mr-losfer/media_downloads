@@ -1,7 +1,7 @@
 {
   "version": "2.5.6",
   "released_at": "2026-11-09T11:30:50Z",
-  "notes": "重要：**Git 账号已更名为 Mr-losfer**，更新检测、Release 下载与 Docker 镜像地址全部切到新账号\nfix: 更新检测 / 一键更新 / ffmpeg 组件下载的 raw、API、Release 地址改用新仓库 **Mr-losfer/media_downloads**\nfix: **Docker 镜像命名空间改为 ghcr.io/mr-losfer/media-super**（旧 losfer778 命名空间已失效，请更新 compose）\ndocs: README / 部署 / 更新 / fnOS / 版本列表里的仓库链接、镜像名与示例地址同步更新\nfix: 打包脚本、Makefile、compose、OCI labels、fnOS manifest 与 git 提交邮箱同步改为新账号",
+  "notes": "重要：**Git 账号已更名为 Mr-losfer**，更新检测、Release 下载与 Docker 镜像地址全部切到新账号\nfix: 更新检测 / 一键更新 / ffmpeg 组件下载的 raw、API、Release 地址改用新仓库 **Mr-losfer/media_downloads**\nfix: **Docker 镜像命名空间改为 ghcr.io/mr-losfer/media-super**（旧账号命名空间已失效，请更新 compose）\ndocs: README / 部署 / 更新 / fnOS / 版本列表里的仓库链接、镜像名与示例地址同步更新\nfix: 打包脚本、Makefile、compose、OCI labels、fnOS manifest 与 git 提交邮箱同步改为新账号",
   "repo": "https://github.com/Mr-losfer/media_downloads",
   "image": "ghcr.io/mr-losfer/media-super:2.5.6",
   "assets": {
