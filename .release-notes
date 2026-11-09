@@ -1,6 +1,5 @@
-重要：**修复 fnOS fpk 安装报「缺少生命周期脚本 /cmd/main，安装包可能不完整」**，安装不再被中止
-fix: 安装回调不再因找不到 cmd/main 直接 exit 1，改用脚本自身目录等多路径定位，并降级直写配置保证安装完成
-fix: fpk 不再内置 168MB 静态 ffmpeg，安装包从 72MB 回到 **3MB 级**，规避旧版 fnOS 上传超时截断导致生命周期脚本没落盘
-feat: ffmpeg 改为**首次启动后台自动补齐**（gh-proxy 优先、SHA256 校验、只下一次），设置页显示进度并可手动重试
-fix: 升级 / 卸载 / 配置回调同步修正 cmd/main 定位，改端口、改密码、停服务恢复正常
-feat: 补齐 wizard/uninstall 卸载向导，打包新增解包自检（9 个脚本 / 权限 / 校验和 / JSON / 体积守卫）
+重要：**Git 账号已更名为 Mr-losfer**，更新检测、Release 下载与 Docker 镜像地址全部切到新账号
+fix: 更新检测 / 一键更新 / ffmpeg 组件下载的 raw、API、Release 地址改用新仓库 **Mr-losfer/media_downloads**
+fix: **Docker 镜像命名空间改为 ghcr.io/mr-losfer/media-super**（旧 losfer778 命名空间已失效，请更新 compose）
+docs: README / 部署 / 更新 / fnOS / 版本列表里的仓库链接、镜像名与示例地址同步更新
+fix: 打包脚本、Makefile、compose、OCI labels、fnOS manifest 与 git 提交邮箱同步改为新账号

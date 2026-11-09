@@ -1,10 +1,10 @@
 # 部署：Docker 单容器与 Compose
 
-镜像：`ghcr.io/losfer778/media-super`（公开，支持 `linux/amd64` / `linux/arm64` / `linux/arm/v7`）
+镜像：`ghcr.io/mr-losfer/media-super`（公开，支持 `linux/amd64` / `linux/arm64` / `linux/arm/v7`）
 
 - 最新版：`latest`
 - 固定版本：`:2.1.0`
-- 也可以从[仓库](https://github.com/losfer778/media_downloads)源码自行构建
+- 也可以从[仓库](https://github.com/Mr-losfer/media_downloads)源码自行构建
 
 > 默认端口 **9099**（容器内 8080），默认密码 **losfer**，首次登录后请到「设置 → 管理员密码」修改。
 
@@ -29,7 +29,7 @@ docker run -d \
   -v /vol1/1000/影视:/downloads \
   --memory 512m \
   --cpus 1 \
-  ghcr.io/losfer778/media-super:latest
+  ghcr.io/mr-losfer/media-super:latest
 ```
 
 打开 `http://<NAS-IP>:9099`。
@@ -61,7 +61,7 @@ docker run -d \
 
 ```bash
 # 1. 取 compose 文件（也可以 git clone 整个仓库）
-curl -fsSLO https://raw.githubusercontent.com/losfer778/media_downloads/main/docker-compose.yml
+curl -fsSLO https://raw.githubusercontent.com/Mr-losfer/media_downloads/main/docker-compose.yml
 
 # 2. 起服务
 mkdir -p data downloads
@@ -86,7 +86,7 @@ DOWNLOAD_DIR=/vol1/1000/影视 docker compose up -d
 ```yaml
 services:
   mediasuper:
-    image: ghcr.io/losfer778/media-super:latest
+    image: ghcr.io/mr-losfer/media-super:latest
     ports:
       - "9099:8080"          # 改成 8099:8080 就是换端口
     volumes:
@@ -108,7 +108,7 @@ docker compose down                            # 停止（数据保留在 ./data
 ## 三、从源码构建（改代码 / 没有外网）
 
 ```bash
-git clone https://gh-proxy.com/https://github.com/losfer778/media_downloads.git
+git clone https://gh-proxy.com/https://github.com/Mr-losfer/media_downloads.git
 cd media_downloads
 
 # 方式 1：compose 构建

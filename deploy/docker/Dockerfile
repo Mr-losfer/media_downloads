@@ -50,8 +50,8 @@ COPY --from=build /out/mediasuper /usr/local/bin/mediasuper
 
 LABEL org.opencontainers.image.title="Media Super" \
       org.opencontainers.image.description="轻量视频下载管理器（m3u8 / mp4 / flv / ts），带 Web 管理台、REST API 与 MCP" \
-      org.opencontainers.image.source="https://github.com/losfer778/media_downloads" \
-      org.opencontainers.image.url="https://github.com/losfer778/media_downloads" \
+      org.opencontainers.image.source="https://github.com/Mr-losfer/media_downloads" \
+      org.opencontainers.image.url="https://github.com/Mr-losfer/media_downloads" \
       org.opencontainers.image.licenses="MIT"
 
 USER 1000:1000

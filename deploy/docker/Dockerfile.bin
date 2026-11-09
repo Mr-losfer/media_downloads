@@ -6,7 +6,7 @@
 #     -t mediasuper:local .
 #
 # 或者用 CI 产出的 Release 二进制：
-#   curl -L -o mediasuper https://github.com/losfer778/media_downloads/releases/latest/download/mediasuper-linux-amd64
+#   curl -L -o mediasuper https://github.com/Mr-losfer/media_downloads/releases/latest/download/mediasuper-linux-amd64
 #   docker build -f deploy/docker/Dockerfile.bin -t mediasuper:local .
 FROM alpine:3.21
 

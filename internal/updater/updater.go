@@ -107,7 +107,7 @@ func (u *Manager) setFFmpegState(st FFmpegState) {
 	u.ffMu.Unlock()
 }
 
-// New 创建更新管理器。repo 形如 losfer778/media_downloads。
+// New 创建更新管理器。repo 形如 Mr-losfer/media_downloads。
 func New(dataDir, repo string) *Manager {
 	if repo == "" {
 		repo = version.Repo

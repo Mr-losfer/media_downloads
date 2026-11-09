@@ -71,8 +71,8 @@ docker-multiarch:
 	docker buildx build -f deploy/docker/Dockerfile \
 		--platform linux/amd64,linux/arm64,linux/arm/v7 \
 		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) \
-		-t ghcr.io/losfer778/media-super:$(VERSION) \
-		-t ghcr.io/losfer778/media-super:latest \
+		-t ghcr.io/mr-losfer/media-super:$(VERSION) \
+		-t ghcr.io/mr-losfer/media-super:latest \
 		--push .
 
 clean:

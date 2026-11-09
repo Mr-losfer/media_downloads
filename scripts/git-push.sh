@@ -10,7 +10,7 @@
 #
 set -uo pipefail
 
-REPO_PATH="losfer778/media_downloads.git"
+REPO_PATH="Mr-losfer/media_downloads.git"
 PROXY_URL="https://gh-proxy.com/https://github.com/${REPO_PATH}"
 DIRECT_URL="https://github.com/${REPO_PATH}"
 

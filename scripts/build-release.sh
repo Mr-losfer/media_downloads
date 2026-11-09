@@ -15,8 +15,8 @@
 #
 set -euo pipefail
 
-REPO="losfer778/media_downloads"
-IMAGE="ghcr.io/losfer778/media-super"
+REPO="Mr-losfer/media_downloads"
+IMAGE="ghcr.io/mr-losfer/media-super"
 APP="mediasuper"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"

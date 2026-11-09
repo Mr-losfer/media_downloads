@@ -7,7 +7,7 @@
 #   DOWNLOAD_DIR=/vol1/1000/影视 docker compose up -d
 services:
   mediasuper:
-    image: ghcr.io/losfer778/media-super:latest
+    image: ghcr.io/mr-losfer/media-super:latest
     container_name: mediasuper
     restart: unless-stopped
 

@@ -18,10 +18,10 @@ Media Super 有两种升级方式，互不冲突：
 
 元数据来源按顺序尝试，**前者失败自动降级**：
 
-1. `https://gh-proxy.com/https://raw.githubusercontent.com/losfer778/media_downloads/main/version.json`
-2. `https://raw.githubusercontent.com/losfer778/media_downloads/main/version.json`
-3. `https://gh-proxy.com/https://api.github.com/repos/losfer778/media_downloads/releases/latest`
-4. `https://api.github.com/repos/losfer778/media_downloads/releases/latest`
+1. `https://gh-proxy.com/https://raw.githubusercontent.com/Mr-losfer/media_downloads/main/version.json`
+2. `https://raw.githubusercontent.com/Mr-losfer/media_downloads/main/version.json`
+3. `https://gh-proxy.com/https://api.github.com/repos/Mr-losfer/media_downloads/releases/latest`
+4. `https://api.github.com/repos/Mr-losfer/media_downloads/releases/latest`
 
 `version.json` 由打包脚本生成，内容是当前版本号、**更新内容**、各架构二进制的下载地址与 SHA256，
 以及 fpk 与 ffmpeg 组件附件。`notes` 支持多行：行首 `feat:` / `fix:` / `ui:` 会渲染成分类徽章，`**重点**` 会高亮：
@@ -31,12 +31,12 @@ Media Super 有两种升级方式，互不冲突：
   "version": "2.5.5",
   "released_at": "2026-11-09T18:20:00Z",
   "notes": "重要：修复 fpk 安装报缺少生命周期脚本\nfix: 安装回调改用多路径定位",
-  "repo": "https://github.com/losfer778/media_downloads",
-  "image": "ghcr.io/losfer778/media-super:2.5.5",
+  "repo": "https://github.com/Mr-losfer/media_downloads",
+  "image": "ghcr.io/mr-losfer/media-super:2.5.5",
   "assets": {
     "linux-amd64": {
       "name": "mediasuper-linux-amd64",
-      "url": "https://github.com/losfer778/media_downloads/releases/download/v2.5.5/mediasuper-linux-amd64",
+      "url": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/mediasuper-linux-amd64",
       "sha256": "02eef8…",
       "size": 7430328
     }
@@ -48,7 +48,7 @@ Media Super 有两种升级方式，互不冲突：
   "fpk": {
     "mediasuper_2.5.5_fnos-x86.fpk": { "url": "…", "sha256": "…", "size": 3212786 }
   },
-  "checksums": "https://github.com/losfer778/media_downloads/releases/download/v2.5.5/SHA256SUMS"
+  "checksums": "https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.5/SHA256SUMS"
 }
 ```
 
@@ -217,7 +217,7 @@ git commit -am "chore: bump 2.5.5"
 
 # 2. 打 tag（触发 .github/workflows/release.yml）
 git tag v2.5.5
-git push https://github.com/losfer778/media_downloads.git v2.5.5
+git push https://github.com/Mr-losfer/media_downloads.git v2.5.5
 ```
 
 CI 会：先跑 `build-fpk.sh` 出轻量 fpk 与 `ffmpeg-linux-*.gz` → 交叉编译 5 个架构 →

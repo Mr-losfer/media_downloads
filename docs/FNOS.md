@@ -144,7 +144,7 @@ desktop_applaunchname = mediasuper.main
 
 ## 三、安装
 
-1. 到 [Releases](https://github.com/losfer778/media_downloads/releases) 下载对应架构的 fpk
+1. 到 [Releases](https://github.com/Mr-losfer/media_downloads/releases) 下载对应架构的 fpk
    （`x86` 对应 Intel/AMD，`arm` 对应 ARM 机型）；
 2. 飞牛桌面 → 应用中心 → 右上角「手动安装」→ 选择 fpk；
 3. 安装向导会依次询问两项配置：
