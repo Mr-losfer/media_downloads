@@ -2,10 +2,20 @@
 #
 # 全自动生成飞牛 fnOS 的 .fpk 安装包（x86 与 arm 各一个）。
 #
-#   ./scripts/build-fpk.sh              # 先编译再打包
+#   ./scripts/build-fpk.sh              # 先编译再打包（fpk 保持轻量）
 #   VERSION=2.2.0 ./scripts/build-fpk.sh
 #   SKIP_BUILD=1 ./scripts/build-fpk.sh # 复用 dist/ 里已有的二进制
-#   BUNDLE_FFMPEG=0 ./scripts/build-fpk.sh # 不内置 ffmpeg（仅调试用）
+#   BUNDLE_FFMPEG=1 ./scripts/build-fpk.sh # 把 ffmpeg 塞进包（不推荐，见下）
+#   EMIT_FFMPEG_ASSETS=0 ./scripts/build-fpk.sh # 跳过组件产出（仅本地调试）
+#
+# 为什么默认不内置 ffmpeg（重要）：
+#   ffmpeg 静态二进制约 168MB，塞进 app.tgz 会让 fpk 从 3MB 暴涨到 72MB。
+#   fpk 是单个 gzip 流且 app.tgz 排在最前面，旧版 fnOS 手动安装「上传超过一分钟
+#   会报错」，Web 上传被截断后排在后面的 cmd/main 等生命周期脚本根本没落盘，
+#   于是报「缺少生命周期脚本 /cmd/main，安装包可能不完整」。
+#   因此 fpk 只放主程序，ffmpeg 作为独立压缩组件随 Release 发布，应用首次启动
+#   在后台自动下载到 <数据目录>/bin/ffmpeg（gh-proxy 优先、SHA256 校验）。
+#   新版 fnOS / 纯离线环境可显式 BUNDLE_FFMPEG=1 自行构建内置版。
 #
 # 依赖 fnpack（官方打包工具）。本机没有时会自动从 fnnas 静态站下载到 build/tools/。
 # 参考：https://developer.fnnas.com/docs/cli/fnpack/
@@ -33,6 +43,9 @@ CHANGELOG="${NOTES:-$(git log -1 --pretty=%s 2>/dev/null || echo "Media Super v$
 # manifest 是 key=value 文本，fnpack 会把 # 当注释、= 当分隔、换行当多条记录。
 # 这里只取更新内容首行做摘要，并去掉 **重点** / 反引号等标记，避免多行被截断成乱码。
 CHANGELOG="$(printf '%s' "$CHANGELOG" | head -n 1 | sed -e 's/[`*]//g' -e 's/#/ /g' -e 's/=/-/g' | cut -c1-240)"
+
+# 轻量版体积上限：正常约 3MB，超过 16MB 说明又被塞了大文件，直接拦下
+MAX_LIGHT_FPK_SIZE=$((16 * 1024 * 1024))
 
 # ---------- 准备 fnpack ----------
 FNPAK="${FNPAK:-fnpack}"
@@ -76,9 +89,11 @@ rm -rf "$WORK"
 mkdir -p "$WORK"
 
 # ---------- 准备静态 ffmpeg ----------
-# fnOS 不保证系统 PATH 里有 ffmpeg，安装包自带一份静态构建，
-# 否则 m3u8 下完分片会在封装阶段报「ffmpeg: executable file not found」。
-FFMPEG_BUNDLE="${BUNDLE_FFMPEG:-1}"
+# fnOS 不保证系统 PATH 里有 ffmpeg。这里下载一份静态构建，产出两份东西：
+#   1) BUNDLE_FFMPEG=1 时直接塞进 fpk（默认关闭，见文件头说明）
+#   2) 压缩成 ffmpeg-linux-<arch>.gz，作为运行时自动补齐的 Release 附件
+FFMPEG_BUNDLE="${BUNDLE_FFMPEG:-0}"
+EMIT_FFMPEG_ASSETS="${EMIT_FFMPEG_ASSETS:-1}"
 prepare_ffmpeg() {
   local goarch="$1"
   local dir="${OUT_DIR}/tools/ffmpeg-${goarch}"
@@ -145,6 +160,53 @@ prepare_ffmpeg() {
   return 1
 }
 
+# ---------- 打包后自检：杜绝「装不上」这类结构问题 ----------
+verify_fpk() {
+  local fpk="$1" dir
+  dir="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$dir'" RETURN
+  local fail=0
+  say_fail() { echo "!! fpk 自检失败 [$fpk]: $1" >&2; fail=1; }
+
+  tar -xzf "$fpk" -C "$dir" 2>/dev/null || { echo "!! fpk 无法解包: $fpk" >&2; return 1; }
+
+  # 顶层 7 项齐备
+  for p in app.tgz cmd config wizard manifest ICON.PNG ICON_256.PNG; do
+    [ -e "$dir/$p" ] || say_fail "缺少顶层条目 $p"
+  done
+  # fnOS 要求的 9 个生命周期脚本：存在、可执行、语法正确
+  for sc in main install_init install_callback config_init config_callback \
+            upgrade_init upgrade_callback uninstall_init uninstall_callback; do
+    local f="$dir/cmd/$sc"
+    [ -f "$f" ] || { say_fail "缺少生命周期脚本 cmd/$sc"; continue; }
+    [ -x "$f" ] || say_fail "cmd/$sc 没有执行权限"
+    bash -n "$f" 2>/dev/null || say_fail "cmd/$sc 语法错误"
+  done
+  # checksum 必须等于 app.tgz 的 MD5（fnOS 安装时会校验）
+  local want got
+  want="$(sed -n 's/^[[:space:]]*checksum[[:space:]]*=[[:space:]]*//p' "$dir/manifest" | tr -d '[:space:]')"
+  got="$(md5sum "$dir/app.tgz" 2>/dev/null | cut -d' ' -f1)"
+  [ -n "$want" ] && [ "$want" = "$got" ] || say_fail "manifest.checksum 与 app.tgz 不一致 ($want / $got)"
+  # wizard / config 必须是合法 JSON
+  for j in "$dir"/wizard/* "$dir"/config/*; do
+    [ -f "$j" ] || continue
+    python3 -c 'import json,sys;json.load(open(sys.argv[1]))' "$j" >/dev/null 2>&1 \
+      || say_fail "$(basename "$j") 不是合法 JSON"
+  done
+  # 轻量版体积守卫
+  local sz
+  sz="$(stat -c%s "$fpk" 2>/dev/null || stat -f%z "$fpk")"
+  if [ "$FFMPEG_BUNDLE" = "0" ] && [ "$sz" -gt "$MAX_LIGHT_FPK_SIZE" ]; then
+    say_fail "轻量版体积 ${sz} 超过上限 ${MAX_LIGHT_FPK_SIZE}，请检查是否误内置了大文件"
+  fi
+
+  if [ "$fail" -eq 0 ]; then
+    echo "    自检通过：9 个生命周期脚本 / checksum / JSON / 体积 ($(du -h "$fpk" | cut -f1))"
+  fi
+  return "$fail"
+}
+
 build_one() {
   local platform="$1"   # x86 | arm
   local goarch="$2"     # amd64 | arm64
@@ -171,16 +233,16 @@ build_one() {
   mkdir -p "$dir/app/server"
   install -m 0755 "$src" "$dir/app/server/${APP}"
 
-  # 内置 ffmpeg：cmd/main 会优先指向它，引擎也会自动发现
+  # 可选：把 ffmpeg 塞进包。默认关闭——大包在旧版 fnOS 上会装不上（见文件头）。
   if [ "${FFMPEG_BUNDLE}" = "1" ]; then
     local ffbin
     if ! ffbin="$(prepare_ffmpeg "$goarch")"; then
-      echo "!! 内置 ffmpeg 下载失败；可设 BUNDLE_FFMPEG=0 跳过（不推荐，m3u8 将无法转 mp4）" >&2
+      echo "!! 内置 ffmpeg 下载失败；可设 BUNDLE_FFMPEG=0（推荐）" >&2
       return 1
     fi
     mkdir -p "$dir/app/bin"
     install -m 0755 "$ffbin" "$dir/app/bin/ffmpeg"
-    echo "    内置 ffmpeg $(du -h "$dir/app/bin/ffmpeg" | cut -f1)"
+    echo "    ⚠ 已内置 ffmpeg：包体会变大，旧版 fnOS 手动安装可能失败"
   fi
 
   # 生命周期脚本必须可执行
@@ -197,10 +259,29 @@ build_one() {
   local out="${OUT_DIR}/${APP}_${VERSION}_fnos-${platform}.fpk"
   mv "${WORK}/${APP}.fpk" "$out"
   echo "    $(du -h "$out" | cut -f1)  $out"
+  verify_fpk "$out"
+}
+
+# ---------- 产出运行时自动补齐用的 ffmpeg 组件 ----------
+# gzip 而非 xz：Go 标准库 compress/gzip 直接解压，零第三方依赖。
+emit_ffmpeg_assets() {
+  [ "${EMIT_FFMPEG_ASSETS}" = "1" ] || return 0
+  echo "==> 产出 ffmpeg 运行时组件"
+  for goarch in amd64 arm64; do
+    local ffbin out
+    if ! ffbin="$(prepare_ffmpeg "$goarch")"; then
+      echo "!! ffmpeg 组件产出失败 (${goarch})" >&2
+      return 1
+    fi
+    out="${OUT_DIR}/ffmpeg-linux-${goarch}.gz"
+    gzip -9 -c "$ffbin" > "$out"
+    echo "    $(du -h "$out" | cut -f1)  $out"
+  done
 }
 
 build_one x86 amd64
 build_one arm arm64
+emit_ffmpeg_assets
 
 echo "==> fpk 打包完成"
-ls -lh "${OUT_DIR}"/*.fpk
+ls -lh "${OUT_DIR}"/*.fpk "${OUT_DIR}"/ffmpeg-linux-*.gz 2>/dev/null

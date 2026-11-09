@@ -37,9 +37,28 @@ func (s *Server) handleSystemInfo(w http.ResponseWriter, r *http.Request) {
 		"uptime":      int64(time.Since(s.startedAt).Seconds()),
 		"started_at":  s.startedAt.UnixMilli(),
 		"default_dir": st.DefaultDir,
-		"ffmpeg_ok":   ffOK,
-		"ffmpeg_path": ffPath,
+		"ffmpeg_ok":     ffOK,
+		"ffmpeg_path":   ffPath,
+		"ffmpeg_state":  s.up.FFmpegState(),
+		"ffmpeg_can_install": updater.FFmpegAssetAvailable(),
 	})
+}
+
+// handleInstallFFmpeg 手动重试组件安装。前端在失败时提供「重新安装」按钮；
+// 下载只跑这一趟，不会像早期版本那样重复排队重试。
+func (s *Server) handleInstallFFmpeg(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.m.FFmpegPath(); ok {
+		writeJSON(w, 200, map[string]any{"ok": true, "message": "ffmpeg 已可用，无需安装"})
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 16*time.Minute)
+		defer cancel()
+		s.up.EnsureFFmpeg(ctx, true, func(st updater.FFmpegState) {
+			s.m.Broadcast("ffmpeg.state", st)
+		})
+	}()
+	writeJSON(w, 202, map[string]any{"ok": true, "message": "已开始安装组件，请稍候"})
 }
 
 // handleCheckUpdate 检查更新。?force=1 跳过 5 分钟缓存。

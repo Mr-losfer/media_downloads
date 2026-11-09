@@ -1,7 +1,13 @@
 #!/bin/bash
 # 卸载前停服务
 set -u
-if [ -x "${TRIM_APPDEST}/cmd/main" ]; then
-  bash "${TRIM_APPDEST}/cmd/main" stop || true
-fi
+# $0 自定位优先：cmd/ 与 TRIM_APPDEST(target) 不一定同目录
+self="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/main"
+for MAIN in "$self" "${TRIM_APPDEST:-}/cmd/main" \
+  "$(dirname "${TRIM_APPDEST:-/}")/cmd/main" /var/apps/mediasuper/cmd/main; do
+  if [ -x "$MAIN" ]; then
+    bash "$MAIN" stop || true
+    break
+  fi
+done
 exit 0

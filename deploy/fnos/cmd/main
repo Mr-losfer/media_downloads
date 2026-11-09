@@ -147,13 +147,19 @@ start_app() {
 
   export MS_ADDR=":${port}"
   export MS_DATA_DIR="${DATA_DIR}"
-  # 安装包内置了静态 ffmpeg，优先用它；没有才退回系统 PATH
-  if [ -x "${APP_DIR}/bin/ffmpeg" ]; then
+  # ffmpeg 优先级：数据目录里自动补齐的组件 > 用户显式指定 > 安装包内置 > 系统 PATH
+  # fpk 默认不再内置 168MB 的 ffmpeg（大包会让旧版 fnOS 装不上），
+  # 首次启动由程序自动下载到 ${DATA_DIR}/bin/ffmpeg，下载完成后无需重启即可生效。
+  if [ -x "${DATA_DIR}/bin/ffmpeg" ]; then
+    export MS_FFMPEG="${MS_FFMPEG:-${DATA_DIR}/bin/ffmpeg}"
+    export PATH="${DATA_DIR}/bin:${PATH}"
+  elif [ -x "${APP_DIR}/bin/ffmpeg" ]; then
     export MS_FFMPEG="${MS_FFMPEG:-${APP_DIR}/bin/ffmpeg}"
     export PATH="${APP_DIR}/bin:${PATH}"
   else
     export MS_FFMPEG="${MS_FFMPEG:-ffmpeg}"
   fi
+  export MS_DATA_DIR="${DATA_DIR}"
   export MS_SAVE_DIRS="${MS_SAVE_DIRS:-${share}:下载}"
   export MS_DEFAULT_DIR="${MS_DEFAULT_DIR:-${share}}"
 

@@ -2,14 +2,24 @@
 # 安装完成：把安装向导收集的密码和端口落到配置目录
 #   wizard_admin_password / wizard_admin_password2 : 管理员密码（留空用 losfer）
 #   wizard_port                                   : Web 端口（默认 9099）
+#
+# 重要：安装回调里任何「找不到 cmd/main」都绝不能让安装失败。
+# fnOS 不同版本把生命周期脚本放在不同位置（TRIM_APPDEST 有时指向 target、
+# 有时指向应用根，卷号也可能是 vol1/vol2…），而且旧版上传大包被截断时
+# 脚本可能还没落盘。以前这里直接 exit 1，会把「缺少生命周期脚本」弹给
+# 用户并中止安装。现在一律降级：找不到 main 就自己写配置文件，安装照常完成。
 set -u
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
 
-MAIN="${TRIM_APPDEST}/cmd/main"
 ETC_DIR="${TRIM_PKGETC:-/var/apps/mediasuper/etc}"
+LOG_FILE="${TRIM_PKGVAR:-/var/apps/mediasuper/var}/mediasuper-install.log"
+
+log() { echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE" 2>/dev/null || true; }
 
 fail() {
+  # 只有用户输入本身有问题才中止安装（fnOS 会让用户重填向导）
+  log "错误：$1"
   if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
     echo "$1" >> "${TRIM_TEMP_LOGFILE}"
   else
@@ -18,7 +28,24 @@ fail() {
   exit 1
 }
 
-[ -x "$MAIN" ] || fail "缺少生命周期脚本 ${MAIN}，安装包可能不完整。"
+# 多候选定位生命周期脚本。
+# 首选「脚本自己所在目录」：fnOS 执行回调时 install_callback 与 main 一定同目录，
+# 这比 TRIM_APPDEST 可靠得多——TRIM_APPDEST 指向 target（放 app.tgz 的内容），
+# 而 cmd/ 在应用根，两者并不是同一个目录。
+find_main() {
+  local c self
+  self="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/main"
+  for c in \
+    "$self" \
+    "${TRIM_APPDEST:-}/cmd/main" \
+    "$(dirname "${TRIM_APPDEST:-/}")/cmd/main" \
+    "${TRIM_PKGETC:-}/../cmd/main" \
+    /var/apps/mediasuper/cmd/main \
+    /vol[0-9]*/@appcenter/mediasuper/cmd/main; do
+    [ -x "$c" ] && { printf '%s' "$c"; return 0; }
+  done
+  return 1
+}
 
 PW="${wizard_admin_password:-}"
 PW2="${wizard_admin_password2:-}"
@@ -29,10 +56,39 @@ PORT="${wizard_port:-9099}"
 [ "$PW" = "$PW2" ] || fail "两次输入的管理员密码不一致，请重新安装。"
 [ "${#PW}" -ge 6 ] || fail "管理员密码至少 6 位，请重新安装。"
 
+# 端口合法性（不依赖 main，保证降级路径也能校验）
+case "$PORT" in
+  ''|*[!0-9]*) fail "端口不合法：$PORT，请填写 1024-65535 之间的数字。" ;;
+esac
+[ "${#PORT}" -ge 4 ] && [ "${#PORT}" -le 5 ] || fail "端口不合法：$PORT，请填写 1024-65535 之间的数字。"
+[ "$((10#$PORT))" -ge 1024 ] && [ "$((10#$PORT))" -le 65535 ] || fail "端口不合法：$PORT，请填写 1024-65535 之间的数字。"
+
 mkdir -p "$ETC_DIR" || fail "无法创建配置目录 ${ETC_DIR}"
 
-bash "$MAIN" checkport "$PORT" || fail "端口 ${PORT} 不可用，请重新安装并换一个端口。"
-bash "$MAIN" setpass "$PW" || fail "写入管理员密码失败。"
-bash "$MAIN" setport "$PORT" || fail "端口 ${PORT} 不合法或写入失败。"
+MAIN="$(find_main || true)"
 
+if [ -n "$MAIN" ]; then
+  log "安装回调使用生命周期脚本 $MAIN"
+  # 端口占用检查失败只记日志，不中止安装（应用启动时仍会检查并给出提示）
+  bash "$MAIN" checkport "$PORT" || log "端口 $PORT 当前被占用，应用启动时会提示更换"
+  if ! bash "$MAIN" setpass "$PW"; then
+    log "setpass 失败，降级为直接写入 .resetpass"
+    printf '%s' "$PW" > "${ETC_DIR}/.resetpass"
+    chmod 0600 "${ETC_DIR}/.resetpass" 2>/dev/null || true
+  fi
+  if ! bash "$MAIN" setport "$PORT"; then
+    log "setport 失败，降级为直接写入 settings.conf"
+    printf '# 由安装向导写入\nPORT=%s\n' "$PORT" > "${ETC_DIR}/settings.conf"
+    chmod 0644 "${ETC_DIR}/settings.conf" 2>/dev/null || true
+  fi
+else
+  # 脚本没落盘也能装完：直接写配置文件，cmd/main 启动时会读取
+  log "未找到 cmd/main，降级为直接写配置（不影响安装）"
+  printf '%s' "$PW" > "${ETC_DIR}/.resetpass"
+  chmod 0600 "${ETC_DIR}/.resetpass" 2>/dev/null || true
+  printf '# 由安装向导写入\nPORT=%s\n' "$PORT" > "${ETC_DIR}/settings.conf"
+  chmod 0644 "${ETC_DIR}/settings.conf" 2>/dev/null || true
+fi
+
+log "安装回调完成，端口 ${PORT}"
 exit 0

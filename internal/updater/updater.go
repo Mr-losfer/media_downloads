@@ -18,7 +18,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -48,6 +50,7 @@ type Manifest struct {
 	ReleasedAt string           `json:"released_at"`
 	Notes      string           `json:"notes"`
 	Assets     map[string]Asset `json:"assets"`
+	FFmpeg     map[string]Asset `json:"ffmpeg,omitempty"`
 }
 
 // Status 是给前端看的检查结果。
@@ -77,6 +80,31 @@ type Manager struct {
 	mu      sync.Mutex
 	cached  *Status
 	checked time.Time
+
+	ffMu      sync.Mutex
+	ffState   FFmpegState
+	ffRunning bool
+}
+
+// FFmpegState 是运行时 ffmpeg 组件的安装状态，供系统信息与 SSE 使用。
+type FFmpegState struct {
+	Status   string `json:"status"`   // idle | downloading | installing | ready | failed | unsupported
+	Progress int    `json:"progress"` // 0-100
+	Detail   string `json:"detail"`   // 人话说明或错误原因
+	Path     string `json:"path"`     // 安装成功后的路径
+	Source   string `json:"source"`   // 使用的下载源
+}
+
+func (u *Manager) ffmpegState() FFmpegState {
+	u.ffMu.Lock()
+	defer u.ffMu.Unlock()
+	return u.ffState
+}
+
+func (u *Manager) setFFmpegState(st FFmpegState) {
+	u.ffMu.Lock()
+	u.ffState = st
+	u.ffMu.Unlock()
 }
 
 // New 创建更新管理器。repo 形如 losfer778/media_downloads。
@@ -301,6 +329,7 @@ func (u *Manager) Check(ctx context.Context, force bool) *Status {
 }
 
 // downloadURLs 生成代理优先、直连兜底的下载地址列表。
+// 本机/内网地址不应经过公网代理（否则必然 404），直接返回原地址。
 func downloadURLs(raw string) []string {
 	if raw == "" {
 		return nil
@@ -308,7 +337,26 @@ func downloadURLs(raw string) []string {
 	if strings.HasPrefix(raw, ProxyPrefix) {
 		return []string{raw}
 	}
+	if isLocalURL(raw) {
+		return []string{raw}
+	}
 	return []string{ProxyPrefix + raw, raw}
+}
+
+func isLocalURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	if host == "" {
+		return false
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && (ip.IsLoopback() || ip.IsPrivate())
 }
 
 // Stage 下载并校验新版本，落到 <data>/bin 下，返回可执行文件路径。

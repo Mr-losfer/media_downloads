@@ -114,6 +114,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/system/update", s.needAuth(s.handleCheckUpdate))
 	mux.HandleFunc("POST /api/system/update", s.needAuth(s.handleApplyUpdate))
 	mux.HandleFunc("POST /api/system/password", s.needAuth(s.handleChangePassword))
+	mux.HandleFunc("POST /api/system/ffmpeg", s.needAuth(s.handleInstallFFmpeg))
 
 	mux.HandleFunc("POST /mcp", s.handleMCP)
 	mux.HandleFunc("POST /api/mcp", s.handleMCP)

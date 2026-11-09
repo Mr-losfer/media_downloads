@@ -131,14 +131,28 @@ func Run(opt Options) error {
 
 	banner(opt.Addr, opt.DataDir, st, apiKey, passSource)
 
+	ffOK := false
 	if open, ffVer := m.FFmpeg(); open {
+		ffOK = true
 		if p, ok := m.FFmpegPath(); ok {
 			log.Printf("  ffmpeg  %s · %s", ffVer, p)
 		} else {
 			log.Printf("  ffmpeg  %s", ffVer)
 		}
 	} else {
-		log.Printf("  ⚠ ffmpeg 未找到：m3u8 分片仍可下载，但无法转成 mp4（可在设置里指定路径）")
+		log.Printf("  ⚠ ffmpeg 未找到：正在后台自动补齐组件，m3u8 封装会在组件就绪后恢复")
+	}
+	// fpk 默认不内置 ffmpeg（大包会让旧版 fnOS 装不上），首次启动在后台
+	// 下载组件到 <data>/bin/ffmpeg。FileOps 每次调用都会重新解析，装好即生效，
+	// 无需重启。只尝试一次，失败就标记状态，绝不重复下载。
+	if !ffOK && !opt.DisableUpdateCheck {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 16*time.Minute)
+			defer cancel()
+			up.EnsureFFmpeg(ctx, true, func(st updater.FFmpegState) {
+				m.Broadcast("ffmpeg.state", st)
+			})
+		}()
 	}
 
 	errCh := make(chan error, 1)

@@ -116,6 +116,24 @@ for t in "${TARGETS[@]}"; do
   ASSETS_JSON+="    \"${goos}-${label}\": { \"name\": \"${APP}-${goos}-${label}\", \"url\": \"${url}\", \"sha256\": \"${sha}\", \"size\": ${size} }"
 done
 
+# ffmpeg 运行时组件：fpk 默认不内置（大包会让旧版 fnOS 装不上），
+# 由应用首次启动按平台自动下载。version.json 里记录 URL / SHA256 / size。
+FFMPEG_JSON=""
+if ls build/ffmpeg-linux-*.gz >/dev/null 2>&1; then
+  FFMPEG_JSON=$'\n  "ffmpeg": {'
+  xfirst=1
+  for f in build/ffmpeg-linux-*.gz; do
+    name="$(basename "$f")"
+    arch="${name#ffmpeg-linux-}"; arch="${arch%.gz}"
+    sz="$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f")"
+    sh="$(sha256sum "$f" | cut -d' ' -f1)"
+    [ "$xfirst" -eq 1 ] || FFMPEG_JSON+=","
+    xfirst=0
+    FFMPEG_JSON+=$'\n'"    \"linux-${arch}\": { \"name\": \"${name}\", \"url\": \"https://github.com/${REPO}/releases/download/v${VERSION}/${name}\", \"sha256\": \"${sh}\", \"size\": ${sz} }"
+  done
+  FFMPEG_JSON+=$'\n  },'
+fi
+
 FPK_JSON=""
 if ls build/*.fpk >/dev/null 2>&1; then
   FPK_JSON=$'\n  "fpk": {'
@@ -140,7 +158,7 @@ cat > version.json <<EOF
   "image": "${IMAGE}:${VERSION}",
   "assets": {
 ${ASSETS_JSON}
-  },${FPK_JSON}
+  },${FFMPEG_JSON}${FPK_JSON}
   "checksums": "https://github.com/${REPO}/releases/download/v${VERSION}/SHA256SUMS"
 }
 EOF
@@ -180,7 +198,7 @@ if [ "$PUBLISH" -eq 1 ]; then
     [ -f "$f" ] || continue
     case "$f" in *SHA256SUMS|*tar.gz|*mediasuper-linux-*) ASSETS+=("$f") ;; esac
   done
-  for f in build/*.fpk; do [ -f "$f" ] && ASSETS+=("$f"); done
+  for f in build/*.fpk build/ffmpeg-linux-*.gz; do [ -f "$f" ] && ASSETS+=("$f"); done
 
   if "$GH_BIN" release view "v${VERSION}" --repo "$REPO" >/dev/null 2>&1; then
     echo "    Release 已存在，改为上传/覆盖附件"

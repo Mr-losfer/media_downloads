@@ -113,7 +113,7 @@ func NewManager(db *Store, st Settings, dataDir string) *Manager {
 		db:        db,
 		st:        st,
 		hub:       newHub(),
-		ff:        newFileOps(st.FFmpegPath),
+		ff:        newFileOps(st.FFmpegPath, dataDir),
 		dataDir:   dataDir,
 		startedAt: time.Now(),
 	}
@@ -825,7 +825,7 @@ func (m *Manager) UpdateSettings(in Settings) (Settings, error) {
 	} else {
 		m.lim = newLimiter(int64(in.SpeedLimitKB) * 1024)
 	}
-	m.ff = newFileOps(in.FFmpegPath)
+	m.ff = newFileOps(in.FFmpegPath, m.dataDir)
 	st := in
 	m.mu.Unlock()
 

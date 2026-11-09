@@ -7,8 +7,19 @@ set -u
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
 
-MAIN="${TRIM_APPDEST}/cmd/main"
-[ -x "$MAIN" ] || exit 0
+# 回调脚本与 main 同目录，优先用 $0 定位；TRIM_APPDEST 指向 target，不能直接拼 cmd/
+find_main() {
+  local c self
+  self="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/main"
+  for c in "$self" "${TRIM_APPDEST:-}/cmd/main" \
+    "$(dirname "${TRIM_APPDEST:-/}")/cmd/main" /var/apps/mediasuper/cmd/main; do
+    [ -x "$c" ] && { printf '%s' "$c"; return 0; }
+  done
+  return 1
+}
+
+MAIN="$(find_main || true)"
+[ -n "$MAIN" ] || exit 0
 
 PORT="${wizard_port:-}"
 PW="${wizard_admin_password:-}"

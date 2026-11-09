@@ -503,6 +503,18 @@ function connectEvents() {
       waitRestart();
     } catch (err) { /* ignore */ }
   });
+  es.addEventListener('ffmpeg.state', (e) => {
+    try {
+      const st = JSON.parse(e.data);
+      state.ffmpegState = st;
+      paintFFmpeg(state.sys, st);
+      if (st && st.status === 'ready') {
+        // 组件刚装好，刷新一次系统信息拿到真实路径
+        loadSystemInfo();
+        toast('ffmpeg 组件已就绪，m3u8 可以正常封装 mp4 了', 'ok');
+      }
+    } catch (err) { /* ignore */ }
+  });
 }
 
 /* ---------------- 提交任务 ---------------- */
@@ -935,17 +947,57 @@ async function loadSystemInfo() {
   } catch (e) { /* 静默：不影响主流程 */ }
 }
 
-// 「设置 → 下载」里显示 ffmpeg 是否就绪。安装包里自带 ffmpeg，
-// 如果用户看到未找到，多半是自定义路径写错了。
-function paintFFmpeg(d) {
+// 「设置 → 下载」里显示 ffmpeg 是否就绪。
+// fpk 默认不内置 ffmpeg（大包会让旧版 fnOS 装不上），首次启动会在后台
+// 自动下载组件；这里同时展示安装进度、失败原因与手动重试入口。
+function paintFFmpeg(d, live) {
   const box = $('#ffmpegState');
   if (!box) return;
   const ok = !!(d && d.ffmpeg_ok);
   const p = (d && d.ffmpeg_path) || '';
-  box.classList.toggle('bad', !ok);
-  box.innerHTML = '<i></i><span>' +
-    (ok ? 'ffmpeg 已就绪' : '未找到 ffmpeg：m3u8 分片无法封装成 mp4，请检查路径') +
-    (p ? ' <code>' + esc(p) + '</code>' : '') + '</span>';
+  const st = live || (d && d.ffmpeg_state) || state.ffmpegState || {};
+  const status = st.status || '';
+  const busy = status === 'downloading' || status === 'installing';
+  const failed = status === 'failed';
+  const canInstall = !!(d && d.ffmpeg_can_install);
+
+  box.classList.toggle('bad', !ok && !busy);
+  box.classList.toggle('busy', busy);
+
+  let text;
+  if (ok) {
+    text = 'ffmpeg 已就绪';
+  } else if (busy) {
+    text = esc(st.detail || '正在安装 ffmpeg 组件…') +
+      (st.progress ? ' <b>' + st.progress + '%</b>' : '');
+  } else if (failed) {
+    text = esc(st.detail || '组件安装失败') + '，可手动指定 ffmpeg 路径或点击右侧重试';
+  } else if (status === 'unsupported') {
+    text = esc(st.detail || '当前架构没有预编译组件，请手动安装 ffmpeg');
+  } else {
+    text = '未找到 ffmpeg：正在后台自动补齐组件，m3u8 封装会在就绪后恢复';
+  }
+
+  let html = '<i></i><span>' + text + (p ? ' <code>' + esc(p) + '</code>' : '') + '</span>';
+  if (!ok && !busy && canInstall) {
+    html += '<button type="button" class="ff-retry" id="btnFFmpegRetry">' +
+      (failed ? '重新安装' : '立即安装') + '</button>';
+  }
+  box.innerHTML = html;
+  const btn = $('#btnFFmpegRetry');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = '安装中…';
+      try {
+        const r = await api('/api/system/ffmpeg', { method: 'POST' });
+        toast(r && r.message ? r.message : '已开始安装组件', 'ok');
+      } catch (err) {
+        toast('启动组件安装失败：' + err.message, 'err');
+      }
+      setTimeout(() => { btn.disabled = false; }, 3000);
+    });
+  }
 }
 
 function paintUpdate(st) {

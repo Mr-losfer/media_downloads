@@ -19,6 +19,7 @@ import (
 type FileOps struct {
 	mu      sync.Mutex
 	hint    string // 用户配置里写的路径，找不到时用于提示
+	dataDir string // 数据目录：运行时自动补齐的 ffmpeg 放在 <dataDir>/bin
 	ffmpeg  string // 解析后的绝对路径；空串表示没找到
 	ffprobe string
 }
@@ -28,17 +29,17 @@ type FileOps struct {
 // fnOS / 容器里 PATH 往往不含 ffmpeg，用户升级前写进数据库的 "ffmpeg"
 // 也不能再用了，所以这里按「用户配置 → 应用自带 → PATH → 常见安装位置」
 // 的顺序做一次真实探测，而不是把字符串直接交给 exec。
-func newFileOps(ffmpegPath string) *FileOps {
+func newFileOps(ffmpegPath, dataDir string) *FileOps {
 	if ffmpegPath == "" {
 		ffmpegPath = "ffmpeg"
 	}
-	f := &FileOps{hint: ffmpegPath}
+	f := &FileOps{hint: ffmpegPath, dataDir: dataDir}
 	f.resolve()
 	return f
 }
 
 func (f *FileOps) resolve() {
-	ff := resolveBinary(f.hint, "ffmpeg")
+	ff := resolveBinary(f.hint, "ffmpeg", f.dataDir)
 	probe := ""
 	if ff != "" {
 		if p := filepath.Join(filepath.Dir(ff), "ffprobe"); isExecutable(p) {
@@ -46,13 +47,13 @@ func (f *FileOps) resolve() {
 		}
 	}
 	if probe == "" {
-		probe = resolveBinary("", "ffprobe")
+		probe = resolveBinary("", "ffprobe", f.dataDir)
 	}
 	f.ffmpeg, f.ffprobe = ff, probe
 }
 
 // candidates 列出所有可能的可执行文件位置。
-func candidates(pref, name string) []string {
+func candidates(pref, name, dataDir string) []string {
 	var list []string
 	add := func(p string) {
 		if p != "" {
@@ -67,18 +68,24 @@ func candidates(pref, name string) []string {
 	// 2. 环境变量：Docker、systemd 里最常用的注入方式
 	add(os.Getenv("MS_FFMPEG"))
 
-	// 3. 程序自带（fpk 会把静态 ffmpeg 放在 app/bin，Docker 镜像放在 /app/bin）
+	// 3. 运行时自动补齐的组件（fpk 默认不内置 ffmpeg，首次启动下载到这里）
+	//    放在最前面：用户一旦装好组件，就应当优先于系统里可能存在的旧版本。
+	if dataDir != "" {
+		add(filepath.Join(dataDir, "bin", name))
+	}
+
+	// 4. 程序自带（BUNDLE_FFMPEG=1 的内置包 / Docker 镜像）
 	if exe, err := os.Executable(); err == nil {
 		dir := filepath.Dir(exe)
 		add(filepath.Join(dir, name))
 		add(filepath.Join(dir, "bin", name))
 		add(filepath.Join(dir, "..", "bin", name))
 	}
-	// 4. PATH
+	// 5. PATH
 	if p, err := exec.LookPath(name); err == nil {
 		add(p)
 	}
-	// 5. 常见安装位置：fnOS、群晖、威联通、Homebrew、Linux 发行版
+	// 6. 常见安装位置：fnOS、群晖、威联通、Homebrew、Linux 发行版
 	add("/usr/local/bin/" + name)
 	add("/usr/bin/" + name)
 	add("/bin/" + name)
@@ -89,8 +96,8 @@ func candidates(pref, name string) []string {
 	return list
 }
 
-func resolveBinary(pref, name string) string {
-	for _, p := range candidates(pref, name) {
+func resolveBinary(pref, name, dataDir string) string {
+	for _, p := range candidates(pref, name, dataDir) {
 		if isExecutable(p) {
 			if abs, err := filepath.Abs(p); err == nil {
 				return abs
@@ -142,7 +149,8 @@ func (f *FileOps) MissingError() error {
 	}
 	return permanent(fmt.Errorf(
 		"未找到 ffmpeg（当前配置：%s）：m3u8 分片需要 ffmpeg 才能封装成 mp4。"+
-			"请重新安装带 ffmpeg 的安装包，或在「设置 → 下载 → ffmpeg 路径」填写可执行文件的绝对路径", hint))
+			"组件会在后台自动补齐，可到「设置 → 下载」查看进度或点「立即安装 / 重新安装」；"+
+			"也可以手动在「ffmpeg 路径」填写可执行文件的绝对路径", hint))
 }
 
 func (f *FileOps) Available() (string, bool) {
