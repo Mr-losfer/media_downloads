@@ -15,14 +15,14 @@ import (
 // Item 是一条可下载对象。插件负责把页面里的媒体直链映射成 Item；
 // 前端勾选后原样组装成 POST /api/tasks 的请求体。
 type Item struct {
-	ID      string            `json:"id"`                 // 站点内唯一标识（如 wxv_xxx）
-	URL     string            `json:"url"`                // 真实下载直链
-	Title   string            `json:"title"`              // 建议文件名/显示名
+	ID      string            `json:"id"`    // 站点内唯一标识（如 wxv_xxx）
+	URL     string            `json:"url"`   // 真实下载直链
+	Title   string            `json:"title"` // 建议文件名/显示名
 	Cover   string            `json:"cover,omitempty"`
-	Kind    string            `json:"kind"`               // video | audio | image | file
-	Format  string            `json:"format,omitempty"`   // mp4 / mp3 ...
-	Page    string            `json:"page,omitempty"`     // 原始播放页链接
-	Headers map[string]string `json:"headers,omitempty"`  // 建议携带的请求头（防盗链等）
+	Kind    string            `json:"kind"`              // video | audio | image | file
+	Format  string            `json:"format,omitempty"`  // mp4 / mp3 ...
+	Page    string            `json:"page,omitempty"`    // 原始播放页链接
+	Headers map[string]string `json:"headers,omitempty"` // 建议携带的请求头（防盗链等）
 }
 
 // Result 是所有插件共用的解析结果形状，前端只认这一种结构。

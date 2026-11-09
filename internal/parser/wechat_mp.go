@@ -43,9 +43,11 @@ func NewWechatMP(endpoint string) *WechatMP {
 	}
 }
 
-func (p *WechatMP) ID() string          { return "wechat_mp" }
-func (p *WechatMP) Name() string        { return "微信公众号" }
-func (p *WechatMP) Description() string { return "解析 mp.weixin.qq.com/s/ 文章，提取文章信息与视频下载直链（mp4）" }
+func (p *WechatMP) ID() string   { return "wechat_mp" }
+func (p *WechatMP) Name() string { return "微信公众号" }
+func (p *WechatMP) Description() string {
+	return "解析 mp.weixin.qq.com/s/ 文章，提取文章信息与视频下载直链（mp4）"
+}
 func (p *WechatMP) Patterns() []string {
 	return []string{"https://mp.weixin.qq.com/s/*", "https://mp.weixin.qq.com/s?__biz=*"}
 }
@@ -68,28 +70,28 @@ func (p *WechatMP) Match(rawURL string) bool {
 
 // mpData 与解析接口 data 字段一一对应，字段全部宽松处理，缺字段不影响其它字段。
 type mpData struct {
-	Title         string       `json:"title"`
-	Cover         string       `json:"cover"`
-	Author        string       `json:"author"`
-	Description   string       `json:"description"`
-	PublishTime   flexString   `json:"publish_time"`
-	Content       string       `json:"content"`
-	Images        []string     `json:"images"`
-	WXVFields     []string     `json:"wxv_fields"`
-	MovieDownURL  []string     `json:"movie_down_url"`
-	WXVURLs       []string     `json:"wxv_urls"`
-	VoiceIDs      []string     `json:"voice_ids"`
-	AudioDownURLs []string     `json:"audio_down_urls"`
-	SourceURL     string       `json:"source_url"`
-	APIDesc       string       `json:"api_desc"`
+	Title         string     `json:"title"`
+	Cover         string     `json:"cover"`
+	Author        string     `json:"author"`
+	Description   string     `json:"description"`
+	PublishTime   flexString `json:"publish_time"`
+	Content       string     `json:"content"`
+	Images        []string   `json:"images"`
+	WXVFields     []string   `json:"wxv_fields"`
+	MovieDownURL  []string   `json:"movie_down_url"`
+	WXVURLs       []string   `json:"wxv_urls"`
+	VoiceIDs      []string   `json:"voice_ids"`
+	AudioDownURLs []string   `json:"audio_down_urls"`
+	SourceURL     string     `json:"source_url"`
+	APIDesc       string     `json:"api_desc"`
 }
 
 type mpEnvelope struct {
-	Code    flexInt   `json:"code"`
-	Msg     string    `json:"msg"`
+	Code    flexInt    `json:"code"`
+	Msg     string     `json:"msg"`
 	Time    flexString `json:"time"`
-	Runtime float64   `json:"runtime"`
-	Data    mpData    `json:"data"`
+	Runtime float64    `json:"runtime"`
+	Data    mpData     `json:"data"`
 }
 
 // flexString / flexInt 兼容接口偶尔把数字写成字符串（或反过来）的情况。
