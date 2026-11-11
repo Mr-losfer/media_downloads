@@ -10,8 +10,11 @@
 | --- | --- |
 | GitHub 仓库地址（推荐） | `https://github.com/Mr-losfer/media_downloads` |
 | JSON 直链 | `https://raw.githubusercontent.com/Mr-losfer/media_downloads/main/fnpack.json` |
+| JSON 直链（国内加速） | `https://gh-proxy.com/https://raw.githubusercontent.com/Mr-losfer/media_downloads/main/fnpack.json` |
 
 在 FnDepot 客户端（版本需 `> 0.0.7`，且已适配 fnOS httponly 认证）选择「添加外部源」，填入以上任一地址即可。客户端优先读取仓库默认分支根目录下**文件名完全匹配**的 `fnpack.json`。
+
+实测本环境直连 GitHub raw 不稳定、代理直链返回 200；`icon_url` / `preview_urls` / `readme_url` 为相对路径，会跟随所选源地址的基准解析，因此用加速直链时图标与预览图同样走代理、无需改动 JSON。
 
 ## 二、目录结构
 
@@ -88,7 +91,9 @@ for a,f in [('x86',{'name':'mediasuper_2.5.7_fnos-x86.fpk'}),('arm',{'name':'med
 
 FnDepot 每天自动运行 `scripts/generate_sources.py`：搜索含 `fndepot` 的仓库以及代码搜索 `filename:fnpack.json`，校验源结构、必填字段、死亡仓库（6 个月未更新）与重复源后，把合格源写入根目录 `valid_sources.txt`。
 
-为让本仓库能被稳定发现，仓库已添加 `fndepot` topic，并在 `fnpack.json` 中保持至少一个合规应用。客户端还会按「应用名 + 版本」指纹做重复源判定，因此**不要再用本项目的同一应用去 fork 一份 FnDepot 仓库**，否则后添加的重复源会被自动停用。
+为让本仓库能被稳定发现，仓库已添加 `fndepot` topic（保留原有 10 个 topic），并在 `fnpack.json` 中保持至少一个合规应用。实测 GitHub 仓库搜索 `q=fndepot` 已能命中本仓库；代码搜索 `filename:fnpack.json` 对新推送文件有索引延迟，属正常现象。自动收录由 FnDepot 每日任务执行，收录结果以其 `valid_sources.txt` 为准，**不影响手动添加源立即使用**。
+
+客户端还会按「应用名 + 版本」指纹做重复源判定，因此**不要再用本项目的同一应用去 fork 一份 FnDepot 仓库**，否则后添加的重复源会被自动停用。
 
 ## 六、下载地址与代理
 
