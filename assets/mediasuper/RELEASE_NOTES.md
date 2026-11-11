@@ -1,0 +1,16 @@
+# 更新内容
+
+## v2.5.7
+
+**新增插件化链接解析**：首页粘贴公众号文章先解析、再把视频直链作为下载对象，普通直链流程完全不变。
+
+- 识别 `https://mp.weixin.qq.com/s/*` 后展示解析结果：标题 / 封面 / 作者 / 简介 / 发布时间 / 文章图片 / 正文摘要。
+- 文章里的 `movie_down_url` 列成可勾选视频列表（默认全选、可全不选），批量提交为普通下载任务，**一般是 mp4 直链、无需 ffmpeg 合成**。
+- 新增 `internal/parser` 插件框架（`Parser` 接口 / 注册表 / 统一 `Result`），后续增加解析站点只需实现并注册一行，**前端与下载引擎都不用改**。
+- 新增 `GET /api/parsers` 与 `POST /api/parse`，文档页、README、架构文档补充接口与扩展说明。
+- 解析服务空文章 / 业务失败 / 非 JSON / 超时均有明确中文提示；外部图片、正文与链接做安全过滤后再渲染。
+- 解析服务地址可用环境变量 `MS_MP_PARSE_API` 换成自建服务；新增 10 项解析插件单测（mock 解析服务）。
+
+## 历史版本
+
+完整列表见 [docs/RELEASES.md](https://github.com/Mr-losfer/media_downloads/blob/main/docs/RELEASES.md)。

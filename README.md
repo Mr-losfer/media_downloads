@@ -87,7 +87,19 @@ docker run -d --name mediasuper --restart unless-stopped \
 安装包保持**轻量（约 3MB）**；首次启动会在后台自动补齐 ffmpeg 组件，补齐后 m3u8 下完即可封装成 mp4，
 不依赖 NAS 系统里是否装了 ffmpeg。进度与手动重试见「设置 → 下载」，打包与调试见 [docs/FNOS.md](docs/FNOS.md)。
 
-### 方式四：裸机二进制
+### 方式四：FnDepot 第三方商店（外部源）
+
+在 [FnDepot](https://github.com/EWEDLCM/FnDepot) 客户端（版本 `> 0.0.7`）添加外部源：
+
+```
+https://github.com/Mr-losfer/media_downloads
+```
+
+商店里会出现 **Media Super**，按设备架构自动选 x86 / arm 安装包，安装向导同样可自定义密码与端口。
+源索引为仓库根目录的 [`fnpack.json`](fnpack.json)（V2 格式），复用已发布的 fpk 附件并带 SHA256 校验，
+上架/换图标**不需要发布新版本**。完整字段、校验与发版规则见 [docs/FNDEPOT.md](docs/FNDEPOT.md)。
+
+### 方式五：裸机二进制
 
 ```bash
 curl -fsSL -o mediasuper \
@@ -235,10 +247,12 @@ internal/server/        HTTP：REST、鉴权、MCP、静态资源、系统接口
 internal/updater/       更新检测 / 下载校验 / 热切换
 internal/version/       版本号（构建时 -ldflags 注入）
 web/                    前端（原生 JS，embed 进二进制）
+fnpack.json             FnDepot 外部源 V2 索引（商店上架）
+assets/mediasuper/      商店图标、预览图、README、更新内容
 deploy/docker/          Dockerfile、构建用 compose
 deploy/fnos/            fnOS fpk 模板（manifest / cmd / config / ui）
 scripts/                build-release.sh、build-fpk.sh、git-push.sh
-docs/                   部署、更新、fnOS、架构、版本列表
+docs/                   部署、更新、fnOS、FnDepot 上架、架构、版本列表
 .release-notes          本次「更新内容」（发布脚本读取，支持多行与高亮标记）
 .github/workflows/      Release 与多架构镜像流水线
 ```
@@ -252,6 +266,7 @@ docs/                   部署、更新、fnOS、架构、版本列表
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Docker 单容器 / Compose / 镜像源 / 目录权限 |
 | [docs/UPDATE.md](docs/UPDATE.md) | 更新检测、一键更新、代理策略、回滚 |
 | [docs/FNOS.md](docs/FNOS.md) | fpk 打包流程、安装、日志排查 |
+| [docs/FNDEPOT.md](docs/FNDEPOT.md) | FnDepot 第三方商店上架、源字段、校验与发版规则 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 代码结构与关键流程 |
 | [docs/RELEASES.md](docs/RELEASES.md) | 历史构建列表 |
 

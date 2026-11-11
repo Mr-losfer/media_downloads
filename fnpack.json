@@ -1,0 +1,69 @@
+{
+  "schema_version": "2",
+  "source_info": {
+    "name": "losfer 应用源",
+    "author": "Mr-losfer",
+    "homepage": "https://github.com/Mr-losfer/media_downloads",
+    "description": "Media Super 官方应用源，提供飞牛 fnOS 的 FPK 安装包（FnDepot 外部源 V2）。",
+    "i18n": {
+      "en-US": {
+        "name": "losfer App Source",
+        "description": "Official Media Super source with fnOS FPK packages (FnDepot V2 external source)."
+      }
+    }
+  },
+  "apps": {
+    "mediasuper": {
+      "display_name": "Media Super",
+      "desc": "轻量视频下载管理器：支持 m3u8 / mp4 / flv / ts 直链，多线程分片下载、自动转封装 mp4；自带 Web 管理台、REST API、插件化链接解析与自动更新。<br>安装向导可自定义管理员密码与端口，默认密码 losfer、默认端口 9099。",
+      "platform": ["x86", "arm"],
+      "categories": ["影音娱乐"],
+      "icon_url": "./assets/mediasuper/ICON.PNG",
+      "preview_urls": [
+        "./assets/mediasuper/Preview/1.png",
+        "./assets/mediasuper/Preview/2.png",
+        "./assets/mediasuper/Preview/3.png",
+        "./assets/mediasuper/Preview/4.png",
+        "./assets/mediasuper/Preview/5.png"
+      ],
+      "readme_url": "./assets/mediasuper/README.md",
+      "bug_report_url": "https://github.com/Mr-losfer/media_downloads/issues",
+      "maintainer": "losfer",
+      "maintainer_url": "https://github.com/Mr-losfer",
+      "run_as": "package",
+      "install_type": "",
+      "is_docker": false,
+      "service_port": "9099",
+      "i18n": {
+        "en-US": {
+          "display_name": "Media Super",
+          "desc": "Lightweight video downloader for HLS (m3u8), mp4, flv and ts direct links, with a built-in web console, REST API, pluggable link parsers and auto update.<br>The install wizard lets you set the admin password and port; defaults: losfer / 9099."
+        }
+      },
+      "releases": {
+        "2.5.7": {
+          "changelog": "新增插件化链接解析：首页粘贴公众号文章先解析标题 / 封面 / 作者 / 简介 / 发布时间，再把视频直链列成可勾选的下载对象批量提交（一般是 mp4 直链、无需 ffmpeg 合成），普通直链流程完全不变。\n新增 GET /api/parsers 与 POST /api/parse，后续增加解析站点只需注册一个插件，前端与下载引擎都不用改。\n修复解析空文章 / 业务失败 / 非 JSON / 超时的中文提示，外部图片、正文与链接做安全过滤后再渲染；新增 10 项解析插件单测。",
+          "updated_at": "2026-11-10T02:38:03+08:00",
+          "os_min_version": "0.9.0",
+          "i18n": {
+            "en-US": {
+              "changelog": "Added pluggable link parsing: paste a WeChat MP article to preview its metadata and batch-submit the video URLs (usually mp4, no ffmpeg muxing needed). Plain direct links are unchanged. Added GET /api/parsers and POST /api/parse. Fixed empty/failed/timeout handling, sanitized external content, and added 10 parser unit tests."
+            }
+          },
+          "packages": {
+            "x86": {
+              "download_url": "https://gh-proxy.com/https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/mediasuper_2.5.7_fnos-x86.fpk",
+              "sha256": "5708a250384d3acdc9bf9721461d292b0bea259f08a408ffb303b3b8973d29f5",
+              "size": 3375601
+            },
+            "arm": {
+              "download_url": "https://gh-proxy.com/https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/mediasuper_2.5.7_fnos-arm.fpk",
+              "sha256": "afb5d0f0bc659c929201753b4772929e69087daf70a516bcac021d42d358d59c",
+              "size": 3112083
+            }
+          }
+        }
+      }
+    }
+  }
+}
