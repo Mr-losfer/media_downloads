@@ -38,6 +38,7 @@ app → web
 | `model.go` | `Task`、`Settings`、`SaveDir`、状态机常量、默认值、`Sanitize()` |
 | `store.go` | bbolt 封装（`tasks` / `meta` 两个 bucket） |
 | `manager.go` | 调度循环、并发控制、进度聚合、删除/改名/重试、统计 |
+| `dedupe.go` | 防重复下载：链接/标题归一化、`DuplicateError`、重复任务检索 |
 | `download.go` | 直链探测、Range 多段并行、单流兜底 |
 | `hls.go` | m3u8 解析、主流/子流选择、AES-128、BYTERANGE、分片并发与拼接 |
 | `ffmpeg.go` | `-c copy` 重封装、转码兜底、缩略图、时长 |
@@ -117,7 +118,10 @@ POST /api/parse {url}
 
 ```
 POST /api/tasks
-  └─ Manager.Add            校验 URL、目录白名单、磁盘剩余空间
+  └─ Manager.Add            校验 URL → 防重复检查 → 目录白名单 → 磁盘剩余空间
+       ├─ 命中重复：返回 DuplicateError，HTTP 409 + {duplicate,reason,task_id}，不建任务
+       │            （链接防重始终开启；标题防重由 settings.dedupe_title 控制；
+       │              只拦 queued/running/merging/completed，failed/canceled 放行）
        └─ 写入 bbolt + SSE 广播 task.created + Webhook
 
 Manager.tick（每秒）

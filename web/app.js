@@ -167,7 +167,12 @@ async function api(path, opt) {
   const ct = r.headers.get('content-type') || '';
   if (ct.indexOf('json') >= 0) { try { data = await r.json(); } catch (e) { /* ignore */ } }
   if (r.status === 401) { showLogin(); throw new Error('登录已过期，请重新登录'); }
-  if (!r.ok) throw new Error((data && (data.error || data.message)) || ('请求失败 HTTP ' + r.status));
+  if (!r.ok) {
+    const ex = new Error((data && (data.error || data.message)) || ('请求失败 HTTP ' + r.status));
+    ex.status = r.status;
+    ex.data = data || null; // 重复下载拦截会带 { duplicate, reason, task_id }
+    throw ex;
+  }
   return data;
 }
 
@@ -695,7 +700,7 @@ async function submitParsedItems() {
   const opts = collectOpts();
   const btn = $('#parseCard [data-pa="download"]');
   if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
-  let ok = 0, fail = 0, firstId = '', lastErr = '';
+  let ok = 0, fail = 0, dup = 0, dupTitle = 0, firstId = '', lastErr = '';
   for (const it of picked) {
     const body = { url: it.url, title: it.title || '' };
     if (opts.save_dir) body.save_dir = opts.save_dir;
@@ -707,14 +712,30 @@ async function submitParsedItems() {
       state.tasks.set(t.id, t);
       if (!firstId) firstId = t.id;
       ok++;
-    } catch (ex) { fail++; lastErr = ex.message || '请求失败'; }
+    } catch (ex) {
+      // 409 = 重复下载被直接拦截，不算提交失败；其余才是真失败。
+      if (ex && ex.data && ex.data.duplicate) {
+        dup++;
+        if (ex.data.reason === 'title') dupTitle++;
+      } else {
+        fail++;
+        lastErr = ex.message || '请求失败';
+      }
+    }
   }
   resetInputs();
   hideParseCard();
   renderList(true);
+  const dupMsg = '跳过 ' + dup + ' 个重复' + (dupTitle ? '（' + dupTitle + ' 个同标题）' : '');
+  const parts = [];
+  if (ok) parts.push('已加入 ' + ok + ' 个下载任务');
+  if (dup) parts.push(dupMsg);
+  if (fail) parts.push(fail + ' 个失败');
   if (ok) {
-    toast('已加入 ' + ok + ' 个下载任务' + (fail ? '，' + fail + ' 个失败' : ''), fail ? 'err' : 'ok');
+    toast(parts.join('，'), fail ? 'err' : 'ok');
     jumpToTask(firstId);
+  } else if (dup) {
+    toast('没有新增任务：已拦截 ' + dup + ' 个重复下载' + (fail ? '，另有 ' + fail + ' 个失败' : ''), 'err');
   } else {
     toast('提交失败：' + (lastErr || '请检查保存目录'), 'err');
   }
@@ -961,7 +982,8 @@ const SET = {
 const BOOL = {
   allow_transcode: '#sTranscode', thumbnails: '#sThumbs',
   keep_temp: '#sKeepTemp', insecure_tls: '#sInsecure',
-  auto_update: '#sAutoUpdate', trim_enabled: '#sTrim'
+  auto_update: '#sAutoUpdate', trim_enabled: '#sTrim',
+  dedupe_title: '#sDedupeTitle'
 };
 function numVal(sel) { const v = parseInt($(sel).value, 10); return isNaN(v) ? 0 : v; }
 

@@ -93,13 +93,16 @@ type Settings struct {
 	TranscodePreset string    `json:"transcode_preset"`
 	KeepTemp        bool      `json:"keep_temp"`
 	Thumbnails      bool      `json:"thumbnails"`
-	AutoCleanDays   int       `json:"auto_clean_days"`
-	AutoUpdate      bool      `json:"auto_update"` // 开启后每 2 小时检查，空闲时自动升级
-	WebhookURL      string    `json:"webhook_url"`
-	WebhookSecret   string    `json:"webhook_secret"`
-	WebhookProgress bool      `json:"webhook_progress"`
-	PublicBase      string    `json:"public_base"`
-	APIKey          string    `json:"api_key"`
+	// DedupeTitle 开启后，相同标题也不再创建第二条任务（默认关闭）。
+	// 链接防重是固定行为、始终开启，不设开关。
+	DedupeTitle     bool   `json:"dedupe_title"`
+	AutoCleanDays   int    `json:"auto_clean_days"`
+	AutoUpdate      bool   `json:"auto_update"` // 开启后每 2 小时检查，空闲时自动升级
+	WebhookURL      string `json:"webhook_url"`
+	WebhookSecret   string `json:"webhook_secret"`
+	WebhookProgress bool   `json:"webhook_progress"`
+	PublicBase      string `json:"public_base"`
+	APIKey          string `json:"api_key"`
 }
 
 const defaultUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"

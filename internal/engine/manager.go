@@ -456,6 +456,13 @@ func (m *Manager) Add(in TaskInput) (*Task, error) {
 		m.mu.Unlock()
 		return nil, fmt.Errorf("任务数已达上限 %d，请先清理历史", maxTasksStored)
 	}
+	// 防重复下载：同一个链接直接拦截（链接防重始终开启）；
+	// 标题防重由设置开关控制。放在锁内检查，保证并发提交也不会同时通过。
+	title := safeName(in.Title)
+	if dup := m.findDuplicate(raw, title); dup != nil {
+		m.mu.Unlock()
+		return nil, dup
+	}
 	dir := strings.TrimSpace(in.SaveDir)
 	if dir == "" {
 		dir = m.st.DefaultDir
@@ -478,7 +485,7 @@ func (m *Manager) Add(in TaskInput) (*Task, error) {
 	t := &Task{
 		ID:        newID(),
 		URL:       raw,
-		Title:     safeName(in.Title),
+		Title:     title,
 		SaveDir:   dir,
 		Status:    StatusQueued,
 		Host:      pu.Hostname(),

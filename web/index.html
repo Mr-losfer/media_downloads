@@ -223,7 +223,9 @@ curl -X POST "<span data-base>/api/parse" \
     "headers": { "Referer": "https://example.com/" }
   }'</pre></div>
           <div class="note"><b>title</b> 不用写扩展名，服务端按探测到的容器自动补 <code>.mp4</code>；
-            <b>save_dir</b> 必须已在设置里配置；<b>headers</b> 可选，用于防盗链。</div>
+            <b>save_dir</b> 必须已在设置里配置；<b>headers</b> 可选，用于防盗链。<br>
+            <b>防重复下载</b>：同一链接已存在任务时返回 <code>409</code> 并带 <code>{"duplicate":true,"reason":"url"}</code>，直接拦截不创建任务；
+            在「设置 → 下载」开启<b>标题防重</b>后，同标题也会拦截（<code>reason:"title"</code>）。失败 / 已取消的任务不参与判断。</div>
         </div>
 
         <div class="doc-section">
@@ -267,7 +269,7 @@ curl "<span data-base>/api/tasks/&lt;id&gt;/download?token=$VF_KEY" -O -J</pre><
                 <tr><td><span class="m">POST</span></td><td class="mono">/api/logout</td><td>退出登录</td></tr>
                 <tr><td><span class="m get">GET</span></td><td class="mono">/api/me</td><td>当前身份 + API Key</td></tr>
                 <tr><td><span class="m get">GET</span></td><td class="mono">/api/tasks</td><td>任务列表（status / q / limit / offset）</td></tr>
-                <tr><td><span class="m">POST</span></td><td class="mono">/api/tasks</td><td>提交下载任务</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/tasks</td><td>提交下载任务（重复链接 / 标题返回 409）</td></tr>
                 <tr><td><span class="m get">GET</span></td><td class="mono">/api/tasks/&lt;id&gt;</td><td>单个任务详情</td></tr>
                 <tr><td><span class="m">PATCH</span></td><td class="mono">/api/tasks/&lt;id&gt;</td><td>重命名（同步改磁盘文件）</td></tr>
                 <tr><td><span class="m del">DELETE</span></td><td class="mono">/api/tasks/&lt;id&gt;</td><td>删除任务，<code>?file=true</code> 连文件</td></tr>
@@ -578,6 +580,13 @@ event: task.deleted {"id":"…"}
           <label class="check"><input type="checkbox" id="sKeepTemp"><span>保留临时分片（调试用）</span></label>
           <label class="check"><input type="checkbox" id="sInsecure"><span>忽略 TLS 证书错误</span></label>
         </div>
+      </div>
+
+      <div class="panel">
+        <h3>防重复下载</h3>
+        <p class="hint">提交任务时按<b>链接</b>判断是否重复：同一个链接已有任务（排队 / 下载中 / 已完成）会<b>直接拦截</b>，不再创建第二条。判断会忽略 # 片段、统一协议与主机名大小写，下载用的链接本身不会被改写。</p>
+        <label class="check"><input type="checkbox" id="sDedupeTitle"><span>标题防重（开启后，相同标题也不再重复下载）</span></label>
+        <p class="hint" style="margin-top:8px">默认关闭。空标题不参与判断；失败或已取消的任务不拦截，可直接重新提交或用「重试」。开启后，批量下载里标题相同的多个视频只会保留第一个。想重新下载已完成的同一链接，先到任务页删除那条任务记录即可。</p>
       </div>
 
       <div class="panel">

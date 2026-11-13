@@ -53,7 +53,7 @@ func mcpTools() []mcpTool {
 	return []mcpTool{
 		{
 			Name:        "submit_download",
-			Description: "提交一个视频/音频下载任务。支持 m3u8(HLS)、mp4、flv、ts 等直链；m3u8 会自动多线程拉分片并转封装成 mp4。返回任务 ID。",
+			Description: "提交一个视频/音频下载任务。支持 m3u8(HLS)、mp4、flv、ts 等直链；m3u8 会自动多线程拉分片并转封装成 mp4。同一链接已存在任务会直接拦截重复下载（标题防重可在设置里开启），失败/已取消的任务不拦截。返回任务 ID。",
 			InputSchema: obj(map[string]any{
 				"url":      p("string", "视频直链（http/https，.m3u8 或 .mp4 等）"),
 				"title":    p("string", "可选，保存文件名（不含扩展名）"),

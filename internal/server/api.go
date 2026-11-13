@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -216,6 +217,17 @@ func (s *Server) handleAddTask(w http.ResponseWriter, r *http.Request) {
 	}
 	t, err := s.m.Add(in)
 	if err != nil {
+		var dup *engine.DuplicateError
+		if errors.As(err, &dup) {
+			// 重复下载直接拦截，用 409 + 结构化字段让前端区分「被跳过」和「真失败」。
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"error":     dup.Message,
+				"duplicate": true,
+				"reason":    dup.Reason,
+				"task_id":   dup.TaskID,
+			})
+			return
+		}
 		writeErr(w, 400, err.Error())
 		return
 	}
