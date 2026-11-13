@@ -2,7 +2,7 @@
 
 [FnDepot](https://github.com/EWEDLCM/FnDepot) 是飞牛 fnOS 的第三方应用商店，采用**外部应用源**模式：源由作者自行发布，用户在客户端里添加源地址后即可看到并安装应用，FnDepot 不托管安装包。本仓库按 [V2 编写说明](https://github.com/EWEDLCM/FnDepot#fndepot-%E5%A4%96%E9%83%A8%E5%BA%94%E7%94%A8%E6%BA%90-v2-%E7%BC%96%E5%86%99%E8%AF%B4%E6%98%8E) 上架 **Media Super**。
 
-> 上架属于元数据发布：**不修改应用版本号、不打 tag、不发 Release**，直接复用已发布的 `v2.5.7` FPK 附件，因此已安装用户不会收到应用内更新提示。
+> `fnpack.json` 只存元数据，安装包始终指向 GitHub Release 上已发布的 FPK 附件，**不需要在源仓库里放二进制**。当前最新版本 `2.5.8`，`releases` 中另保留 `2.5.7`；发布应用新版本时按「第四节」新增版本键即可，商店更新与应用内更新检测相互独立。
 
 ## 一、源地址
 
@@ -53,36 +53,43 @@ media_downloads/
 
 ## 四、版本与安装包
 
-客户端先按设备架构与系统版本过滤，再选择**最高可用版本**；安装包选择顺序为 `packages.[当前架构] → packages.all`。本源为 x86 / arm 分别提供：
+客户端先按设备架构与系统版本过滤，再选择**最高可用版本**；安装包选择顺序为 `packages.[当前架构] → packages.all`。`releases` 中保留 `2.5.7` 与 `2.5.8` 两个版本，客户端会自动安装最新的 `2.5.8`（保留旧版本键符合 FnDepot 的多版本规范，不会让用户装到旧包）。当前版本为 x86 / arm 分别提供：
 
 | 架构 | 文件 | size (Bytes) | SHA256 |
 | --- | --- | --- | --- |
-| x86 | `mediasuper_2.5.7_fnos-x86.fpk` | `3375601` | `5708a250384d3acdc9bf9721461d292b0bea259f08a408ffb303b3b8973d29f5` |
-| arm | `mediasuper_2.5.7_fnos-arm.fpk` | `3112083` | `afb5d0f0bc659c929201753b4772929e69087daf70a516bcac021d42d358d59c` |
+| x86 | `mediasuper_2.5.8_fnos-x86.fpk` | `3678202` | `e639e41f651986e8b14c96fcb8f7e05a81e3f5302b96dea3557f17df7d6da2bd` |
+| arm | `mediasuper_2.5.8_fnos-arm.fpk` | `3415233` | `ae25e451b0486bbccc830c9ea1e023e6e063b798beb87579e1622feb17cbcec8` |
 
-两个下载地址经 `https://gh-proxy.com/` 代理前缀指向 `https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/…`（与应用内置「优先 gh-proxy、异常直连」的更新策略一致，避免国内 NAS 直连 GitHub Release 失败）。`sha256` / `size` 与 `version.json` 中的 `fpk` 映射一致。存在 `sha256` 时客户端**强制校验**，因此 `size` 与哈希必须与已发布文件逐字节一致；代理只是转发，不改变文件内容。
+两个下载地址经 `https://gh-proxy.com/` 代理前缀指向 `https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.8/…`（与应用内置「优先 gh-proxy、异常直连」的更新策略一致，避免国内 NAS 直连 GitHub Release 失败）。`sha256` / `size` 与 `version.json` 中的 `fpk` 映射一致。存在 `sha256` 时客户端**强制校验**，因此 `size` 与哈希必须与已发布文件逐字节一致；代理只是转发，不改变文件内容。
 
 ### 发布前检查命令
 
 ```bash
 jq empty fnpack.json                                   # 严格 JSON
-sha256sum mediasuper_2.5.7_fnos-{x86,arm}.fpk
-stat -c '%n %s' mediasuper_2.5.7_fnos-{x86,arm}.fpk
+sha256sum mediasuper_2.5.8_fnos-{x86,arm}.fpk
+stat -c '%n %s' mediasuper_2.5.8_fnos-{x86,arm}.fpk
 # 核对 FPK 内 manifest 的 appname / version / platform
 ```
 
-也可以用 Python 直接比对 `fnpack.json` 与 `version.json`：
+也可以用 Python 直接比对最新版本的 `fnpack.json` 与 `version.json`：
 
 ```bash
-python3 -c "import json; d=json.load(open('fnpack.json')); v=json.load(open('version.json')); \
-p=d['apps']['mediasuper']['releases']['2.5.7']['packages']; \
-print(all(p[a]['sha256']==v['fpk'][f['name']]['sha256'] and p[a]['size']==v['fpk'][f['name']]['size'] \
-for a,f in [('x86',{'name':'mediasuper_2.5.7_fnos-x86.fpk'}),('arm',{'name':'mediasuper_2.5.7_fnos-arm.fpk'})]))"
+python3 - <<'PY'
+import json
+src = json.load(open('fnpack.json'))
+cur = json.load(open('version.json'))
+v = cur['version']
+for arch, p in src['apps']['mediasuper']['releases'][v]['packages'].items():
+    name = p['download_url'].rsplit('/', 1)[-1]
+    ref = cur['fpk'][name]
+    assert p['sha256'] == ref['sha256'] and p['size'] == ref['size'], (v, arch)
+    print('OK', v, arch, name)
+PY
 ```
 
 ### 发布新版本（重要）
 
-1. 在 `releases` 下**新增**一个可比较的版本键（如 `2.5.8`），不要静默替换同版本 FPK。
+1. 在 `releases` 下**新增**一个可比较的版本键（如 `2.5.9`），不要静默替换同版本 FPK。
 2. 更新该版本的 `updated_at`、两段 `download_url`、`size`、`sha256`。
 3. 已发布的「版本号 + 架构」文件视为不可变；内容变更必须发新版本或新地址。
 4. 图标、预览图、README 可随源更新，不需要发应用版本。
@@ -100,13 +107,13 @@ FnDepot 每天自动运行 `scripts/generate_sources.py`：搜索含 `fndepot` �
 `download_url` 默认带代理前缀，实测在本环境**直连 GitHub Release 不可达（超时）、代理返回 200 且内容哈希与已发布 FPK 完全一致**：
 
 ```
-https://gh-proxy.com/https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/mediasuper_2.5.7_fnos-x86.fpk
+https://gh-proxy.com/https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.8/mediasuper_2.5.8_fnos-x86.fpk
 ```
 
 若你的网络可直连 GitHub、或代理服务不可用，去掉 `https://gh-proxy.com/` 前缀即可，内容不变、SHA256 仍可通过校验：
 
 ```
-https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.7/mediasuper_2.5.7_fnos-x86.fpk
+https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.8/mediasuper_2.5.8_fnos-x86.fpk
 ```
 
 改完后重新执行上面的校验命令即可，不需要重新打包 FPK，也不需要发布新版本。
