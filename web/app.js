@@ -661,6 +661,15 @@ function renderParseCard(res, inputURL) {
     h += '<div class="parse-content">' + esc(r.content_text) + '</div></details>';
   }
   if (ex.api_desc) h += '<p class="parse-note">' + esc(ex.api_desc) + '</p>';
+  // 插件配置项 auto_download：解析完自动把全部视频加入下载队列
+  if (ex.auto_download && items.length) {
+    setTimeout(() => {
+      if (state.parse === r && !$('#parseCard').classList.contains('hidden')) {
+        toast('插件已开启自动下载，正在加入队列', 'ok');
+        submitParsedItems();
+      }
+    }, 400);
+  }
   h += '</div>';
 
   h += '<div class="parse-actions">';
@@ -1501,8 +1510,11 @@ paintThemeBtn();
 function setDoc(d) {
   state.doc = d;
   $$('[data-doc]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.doc === d)));
-  $('#docApi').classList.toggle('hidden', d !== 'api');
-  $('#docMcp').classList.toggle('hidden', d !== 'mcp');
+  const map = { api: '#docApi', plugins: '#docPlugins', mcp: '#docMcp' };
+  Object.keys(map).forEach((k) => {
+    const el = $(map[k]);
+    if (el) el.classList.toggle('hidden', k !== d);
+  });
 }
 $$('[data-doc]').forEach((b) => b.addEventListener('click', () => {
   setDoc(b.dataset.doc);
@@ -1526,6 +1538,501 @@ $$('[data-set]').forEach((b) => b.addEventListener('click', () => {
   const h = '#/settings/' + b.dataset.set;
   if (location.hash !== h) history.replaceState(null, '', h);
 }));
+
+/* ============================================================
+   插件管理页：已安装 / 插件市场 / 上传 / 配置 / 文件编辑 / 测试调试
+   ============================================================ */
+let plugCache = [];
+let marketCache = null;
+let marketCfgCache = null;
+let plugTab = 'installed';
+
+const ENGINE_LABEL = { builtin: '内置', declarative: '声明式', go: 'Go' };
+const ORIGIN_LABEL = { builtin: '内置', local: '本地', market: '市场' };
+
+function setPlug(t) {
+  plugTab = (t === 'market') ? 'market' : 'installed';
+  $$('[data-plug]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.plug === plugTab)));
+  const ins = $('#plugInstalled'), mk = $('#plugMarket');
+  if (ins) ins.classList.toggle('hidden', plugTab !== 'installed');
+  if (mk) mk.classList.toggle('hidden', plugTab !== 'market');
+  if (plugTab === 'market' && !marketCache) loadMarket(false);
+}
+$$('[data-plug]').forEach((b) => b.addEventListener('click', () => {
+  setPlug(b.dataset.plug);
+  const h = '#/plugins/' + (b.dataset.plug === 'market' ? 'market' : 'installed');
+  if (location.hash !== h) history.replaceState(null, '', h);
+}));
+
+async function loadPlugins() {
+  try {
+    const d = await api('/api/plugins');
+    plugCache = d.plugins || [];
+    const w = $('#plugWarn');
+    const warns = d.warnings || [];
+    if (w) {
+      w.classList.toggle('hidden', !warns.length);
+      w.innerHTML = warns.length ? '<b>目录扫描提示</b>：' + warns.map(esc).join('；') : '';
+    }
+    renderPlugins();
+  } catch (e) { toast('加载插件失败：' + e.message, 'err'); }
+}
+
+function plugMatchText(m) {
+  const p = [];
+  (m.domains || []).forEach((d) => p.push(d));
+  (m.path_prefixes || []).forEach((x) => p.push(x + '*'));
+  if ((m.url_patterns || []).length) p.push(m.url_patterns.length + ' 条正则');
+  if ((m.extensions || []).length) p.push((m.extensions || []).join('/'));
+  return p.length ? p.join(' · ') : '不自动接管（可手动测试）';
+}
+
+function renderPlugins() {
+  const box = $('#plugList');
+  if (!box) return;
+  if (!plugCache.length) {
+    box.innerHTML = '<div class="plug-empty">还没有插件。点「上传插件」导入文件夹 / zip，或从「插件市场」安装。</div>';
+    return;
+  }
+  box.innerHTML = plugCache.map((v) => {
+    const tags = (v.tags || []).slice(0, 3).map((t) => '<span class="plug-tag">' + esc(t) + '</span>').join('');
+    const cfgN = (v.config_schema || []).length;
+    const warn = (v.warnings || []).length ? '<div class="plug-card-warn">' + esc(v.warnings[0]) + '</div>' : '';
+    return '<article class="plug-card' + (v.enabled ? '' : ' is-off') + '" data-plug-id="' + esc(v.id) + '">' +
+      '<div class="plug-card-top">' +
+        '<div class="plug-ico">' + ico('film') + '</div>' +
+        '<div class="plug-card-txt">' +
+          '<div class="plug-name">' + esc(v.name) +
+            '<span class="plug-ver">v' + esc(v.version) + '</span>' +
+            '<span class="plug-badge">' + esc(ENGINE_LABEL[v.engine] || v.engine) + '</span>' +
+            (v.builtin ? '' : '<span class="plug-badge dim">' + esc(ORIGIN_LABEL[v.origin] || v.origin) + '</span>') +
+          '</div>' +
+          '<p class="plug-desc">' + esc(v.description || '暂无描述') + '</p>' +
+          '<div class="plug-match"><code>' + esc(v.id) + '</code> · 匹配 ' + esc(plugMatchText(v.match || {})) + '</div>' +
+          (tags ? '<div class="plug-tags">' + tags + '</div>' : '') +
+        '</div>' +
+        '<label class="plug-switch" title="启用 / 禁用插件">' +
+          '<input type="checkbox" data-plug-act="toggle" data-pid="' + esc(v.id) + '"' + (v.enabled ? ' checked' : '') + '>' +
+          '<span></span>' +
+        '</label>' +
+      '</div>' + warn +
+      '<div class="plug-card-actions">' +
+        (cfgN ? '<button class="btn ghost sm" data-plug-act="config" data-pid="' + esc(v.id) + '">配置 (' + cfgN + ')</button>'
+              : '<button class="btn ghost sm" data-plug-act="config" data-pid="' + esc(v.id) + '">配置</button>') +
+        '<button class="btn ghost sm" data-plug-act="test" data-pid="' + esc(v.id) + '">测试</button>' +
+        '<button class="btn ghost sm" data-plug-act="debug" data-pid="' + esc(v.id) + '">调试</button>' +
+        '<button class="btn ghost sm" data-plug-act="files" data-pid="' + esc(v.id) + '">文件</button>' +
+        (v.engine === 'go' ? '<button class="btn ghost sm" data-plug-act="build" data-pid="' + esc(v.id) + '">编译</button>' : '') +
+        '<button class="btn ghost sm" data-plug-act="export" data-pid="' + esc(v.id) + '">导出</button>' +
+        '<button class="btn ghost sm" data-plug-act="copy" data-pid="' + esc(v.id) + '">另存</button>' +
+        (v.builtin ? '' : '<button class="btn ghost sm danger" data-plug-act="delete" data-pid="' + esc(v.id) + '">删除</button>') +
+      '</div>' +
+    '</article>';
+  }).join('');
+}
+
+function plugById(id) { return plugCache.find((v) => v.id === id) || null; }
+
+/* ---------- 配置弹窗：按 config_schema 动态渲染 ---------- */
+function cfgFieldHTML(f, val) {
+  const v = (val === undefined || val === null) ? (f.default === undefined ? '' : f.default) : val;
+  const key = 'data-cfg-key="' + esc(f.key) + '"';
+  const type = f.type || 'text';
+  const desc = f.desc ? '<div class="cfg-help">' + esc(f.desc) + '</div>' : '';
+  let input;
+  if (type === 'switch') {
+    input = '<label class="cfg-switch"><input type="checkbox" ' + key + (v === true || v === 'true' || v === 1 ? ' checked' : '') + '><span></span></label>';
+  } else if (type === 'select') {
+    input = '<select ' + key + '>' + (f.options || []).map((o) =>
+      '<option value="' + esc(o.value) + '"' + (String(v) === String(o.value) ? ' selected' : '') + '>' + esc(o.label) + '</option>').join('') + '</select>';
+  } else if (type === 'textarea') {
+    input = '<textarea ' + key + ' rows="3" placeholder="' + esc(f.placeholder || '') + '">' + esc(v) + '</textarea>';
+  } else if (type === 'number') {
+    input = '<input type="number" ' + key + ' value="' + esc(v) + '"' +
+      (f.min != null ? ' min="' + esc(f.min) + '"' : '') + (f.max != null ? ' max="' + esc(f.max) + '"' : '') + '>';
+  } else {
+    input = '<input type="' + (type === 'password' ? 'password' : type === 'url' ? 'url' : 'text') + '" ' + key +
+      ' value="' + esc(v) + '" placeholder="' + esc(f.placeholder || '') + '"' + (f.required ? ' required' : '') + '>';
+  }
+  return '<div class="cfg-field">' +
+    '<label class="cfg-label">' + esc(f.label || f.key) + (f.required ? ' <i>*</i>' : '') +
+      '<code>' + esc(f.key) + '</code></label>' + input + desc + '</div>';
+}
+
+function openPluginConfig(id) {
+  const v = plugById(id);
+  if (!v) return;
+  const fields = v.config_schema || [];
+  const cfg = v.config || {};
+  let body;
+  if (!fields.length) {
+    body = '<p class="cfg-empty">这个插件没有声明配置项。<br>在 <code>plugin.json</code> 的 <code>config_schema</code> 里加一项，保存后这里就会出现控件。</p>';
+  } else {
+    const groups = [];
+    fields.forEach((f) => {
+      const g = f.group || '配置';
+      let grp = groups.find((x) => x.name === g);
+      if (!grp) { grp = { name: g, html: '' }; groups.push(grp); }
+      grp.html += cfgFieldHTML(f, cfg[f.key]);
+    });
+    body = groups.map((g) => '<div class="cfg-group"><h4>' + esc(g.name) + '</h4>' + g.html + '</div>').join('');
+  }
+  const sheet = openSheet(
+    '<div class="plug-dialog">' +
+      '<div class="plug-dialog-head"><h3>配置 · ' + esc(v.name) + '</h3>' +
+      '<p>配置值保存在数据目录，不会写进插件文件夹；用 <code>{{config.' + esc(fields[0] ? fields[0].key : 'key') + '}}</code> 注入规则或传给 Go 插件。</p></div>' +
+      '<div class="cfg-form">' + body + '</div>' +
+      '<div class="sheet-actions"><span class="spacer"></span>' +
+        '<button class="ghost" data-plug-act="close">取消</button>' +
+        (fields.length ? '<button class="primary" data-plug-act="config-save" data-pid="' + esc(id) + '">保存配置</button>' : '') +
+      '</div>' +
+    '</div>'
+  );
+  sheet.classList.add('plug-sheet');
+}
+
+function collectCfg(sheet) {
+  const out = {};
+  $$('[data-cfg-key]', sheet).forEach((el) => {
+    const k = el.dataset.cfgKey;
+    if (el.type === 'checkbox') out[k] = el.checked;
+    else if (el.type === 'number') out[k] = el.value === '' ? '' : Number(el.value);
+    else out[k] = el.value;
+  });
+  return out;
+}
+
+/* ---------- 新建 / 另存 / 测试 / 文件 / 市场设置等弹窗 ---------- */
+function openPluginCreate() {
+  const sheet = openSheet(
+    '<div class="plug-dialog"><div class="plug-dialog-head"><h3>新建插件</h3>' +
+    '<p>生成一个可直接编辑的插件文件夹。推荐 declarative（零编译、上传即用）。</p></div>' +
+    '<div class="cfg-form"><div class="cfg-group">' +
+      '<div class="cfg-field"><label class="cfg-label">插件 ID <i>*</i><code>id</code></label>' +
+        '<input id="pcId" placeholder="my_site（小写字母/数字/_/-）"></div>' +
+      '<div class="cfg-field"><label class="cfg-label">显示名称 <i>*</i><code>name</code></label>' +
+        '<input id="pcName" placeholder="我的站点解析"></div>' +
+      '<div class="cfg-field"><label class="cfg-label">执行引擎<code>engine</code></label>' +
+        '<select id="pcEngine"><option value="declarative">declarative · 零编译（推荐）</option>' +
+        '<option value="go">go · Go 源码（可多文件，需编译）</option></select></div>' +
+      '<div class="cfg-field"><label class="cfg-label">匹配域名<code>match.domains</code></label>' +
+        '<input id="pcDomains" placeholder="example.com, *.example.com（逗号分隔）"></div>' +
+      '<div class="cfg-field"><label class="cfg-label">简介<code>description</code></label>' +
+        '<input id="pcDesc" placeholder="解析某某站点的视频直链"></div>' +
+    '</div></div>' +
+    '<div class="sheet-actions"><span class="spacer"></span>' +
+      '<button class="ghost" data-plug-act="close">取消</button>' +
+      '<button class="primary" data-plug-act="do-create">创建</button></div></div>'
+  );
+  sheet.classList.add('plug-sheet');
+}
+
+function openPluginTest(id, debug) {
+  const v = plugById(id);
+  if (!v) return;
+  const sheet = openSheet(
+    '<div class="plug-dialog"><div class="plug-dialog-head"><h3>' + (debug ? '调试' : '测试') + ' · ' + esc(v.name) + '</h3>' +
+    '<p>输入一条样例链接运行插件，不创建下载任务。' + (debug ? '调试模式会返回请求/响应片段、日志与耗时。' : '') + '</p></div>' +
+    '<div class="cfg-form"><div class="cfg-group"><div class="cfg-field">' +
+      '<label class="cfg-label">样例链接 <i>*</i><code>url</code></label>' +
+      '<input id="ptUrl" placeholder="https://' + esc((v.match && v.match.domains && v.match.domains[0] || 'example.com').replace(/^\*\./, '')) + '/..."></div>' +
+    '</div></div>' +
+    '<div id="ptResult" class="plug-test-out hidden"></div>' +
+    '<div class="sheet-actions"><span class="spacer"></span>' +
+      '<button class="ghost" data-plug-act="close">关闭</button>' +
+      '<button class="primary" data-plug-act="run-test" data-pid="' + esc(id) + '" data-debug="' + (debug ? '1' : '0') + '">运行</button></div></div>'
+  );
+  sheet.classList.add('plug-sheet');
+}
+
+function showTestResult(d) {
+  const box = $('#ptResult');
+  if (!box) return;
+  box.classList.remove('hidden');
+  const tr = d.trace || {};
+  const steps = (tr.steps || []).map((s) => '<li>' + esc(s) + '</li>').join('');
+  const logs = (tr.logs || []).slice(0, 40).map((s) => '<div>' + esc(s) + '</div>').join('');
+  const ok = d.ok !== false && !d.error;
+  let h = '<div class="' + (ok ? 'test-ok' : 'test-err') + '">' + (ok ? '✓ 运行成功' : '✗ ' + esc(d.error || '运行失败')) + '</div>';
+  if (d.result) {
+    const items = d.result.items || [];
+    h += '<div class="test-sum">标题：' + esc(d.result.title || '—') + ' · 可下载对象 <b>' + items.length + '</b> 个 · 耗时 ' + (tr.duration_ms || 0) + ' ms</div>';
+    if (items.length) h += '<div class="test-items">' + items.slice(0, 8).map((it) =>
+      '<div class="test-item"><b>' + esc(it.title || '未命名') + '</b><code>' + esc(it.url) + '</code></div>').join('') +
+      (items.length > 8 ? '<div class="hint">…另有 ' + (items.length - 8) + ' 条</div>' : '') + '</div>';
+  }
+  if (steps) h += '<details open class="test-fold"><summary>执行步骤</summary><ol>' + steps + '</ol></details>';
+  if (tr.request) h += '<details class="test-fold"><summary>请求</summary><pre>' + esc(tr.request) + '</pre></details>';
+  if (tr.response) h += '<details class="test-fold"><summary>响应</summary><pre>' + esc(tr.response) + '</pre></details>';
+  if (logs) h += '<details class="test-fold"><summary>插件日志</summary><pre>' + logs + '</pre></details>';
+  box.innerHTML = h;
+}
+
+function openPluginFiles(id) {
+  const v = plugById(id);
+  if (!v) return;
+  const files = (v.files || []).filter((f) => !f.is_dir);
+  const sheet = openSheet(
+    '<div class="plug-dialog"><div class="plug-dialog-head"><h3>文件 · ' + esc(v.name) + '</h3>' +
+    '<p><code>' + esc(id) + '/</code> 下的文件，点文件名可在线编辑；改完记得重载。</p></div>' +
+    '<div class="plug-file-list">' + files.map((f) =>
+      '<button class="plug-file" data-plug-act="edit-file" data-pid="' + esc(id) + '" data-path="' + esc(f.path) + '">' +
+      '<code>' + esc(f.path) + '</code><span>' + fmtBytes(f.size) + '</span></button>').join('') +
+      (files.length ? '' : '<p class="hint">没有文件</p>') + '</div>' +
+    '<div id="pfEditor" class="plug-editor hidden">' +
+      '<div class="plug-editor-head"><code id="pfPath"></code>' +
+      '<button class="btn ghost sm" data-plug-act="save-file" data-pid="' + esc(id) + '">保存</button></div>' +
+      '<textarea id="pfContent" spellcheck="false"></textarea></div>' +
+    '<div class="sheet-actions"><span class="spacer"></span>' +
+      '<button class="ghost" data-plug-act="close">关闭</button>' +
+      '<button class="ghost" data-plug-act="reload" data-pid="' + esc(id) + '">重载插件</button></div></div>'
+  );
+  sheet.classList.add('plug-sheet');
+}
+
+function openMarketConfig() {
+  const c = marketCfgCache || { url: 'https://raw.githubusercontent.com/Mr-losfer/media_downloads/main/marketplace.json', proxy_prefix: 'https://gh-proxy.com/', cache_minutes: 30, enabled: true };
+  const sheet = openSheet(
+    '<div class="plug-dialog"><div class="plug-dialog-head"><h3>市场源设置</h3>' +
+    '<p>指向任意 Git 仓库里的 <code>marketplace.json</code> 直链，git push 即上架。</p></div>' +
+    '<div class="cfg-form"><div class="cfg-group">' +
+      '<div class="cfg-field"><label class="cfg-label">marketplace.json 地址<code>url</code></label>' +
+        '<input id="mcUrl" value="' + esc(c.url || '') + '"></div>' +
+      '<div class="cfg-field"><label class="cfg-label">代理前缀<code>proxy_prefix</code></label>' +
+        '<input id="mcProxy" value="' + esc(c.proxy_prefix || '') + '" placeholder="https://gh-proxy.com/（留空则只直连）"></div>' +
+      '<div class="cfg-field"><label class="cfg-label">缓存分钟数<code>cache_minutes</code></label>' +
+        '<input id="mcCache" type="number" min="1" max="1440" value="' + esc(c.cache_minutes || 30) + '"></div>' +
+      '<div class="cfg-field"><label class="cfg-label">启用在线市场<code>enabled</code></label>' +
+        '<label class="cfg-switch"><input type="checkbox" id="mcEnabled"' + (c.enabled !== false ? ' checked' : '') + '><span></span></label></div>' +
+    '</div></div>' +
+    '<div class="sheet-actions"><span class="spacer"></span>' +
+      '<button class="ghost" data-plug-act="close">取消</button>' +
+      '<button class="primary" data-plug-act="market-config-save">保存</button></div></div>'
+  );
+  sheet.classList.add('plug-sheet');
+}
+
+/* ---------- 在线市场 ---------- */
+async function loadMarket(force) {
+  const box = $('#marketList');
+  if (box) box.innerHTML = '<div class="plug-empty">正在读取插件市场…</div>';
+  try {
+    const d = await api('/api/marketplace' + (force ? '?force=1' : ''));
+    marketCfgCache = d.config || marketCfgCache;
+    marketCache = d.ok === false ? null : (d.index || null);
+    const meta = $('#marketMeta');
+    if (meta) {
+      if (d.ok === false) {
+        meta.innerHTML = '<div class="plug-warn">市场读取失败：' + esc(d.error || '未知错误') +
+          '　<button class="btn ghost sm" data-plug-act="market-config">检查市场源设置</button></div>';
+      } else {
+        const idx = d.index || {};
+        meta.innerHTML = '<div class="market-head"><b>' + esc(idx.name || '插件市场') + '</b>' +
+          '<span>' + esc(idx.repo || '') + '</span><span>更新 ' + esc(String(idx.updated_at || '').slice(0, 10)) + '</span>' +
+          '<span>' + ((idx.plugins || []).length) + ' 个插件</span></div>';
+      }
+    }
+    renderMarket();
+  } catch (e) {
+    if (box) box.innerHTML = '<div class="plug-empty">读取失败：' + esc(e.message) + '</div>';
+  }
+}
+
+function renderMarket() {
+  const box = $('#marketList');
+  if (!box) return;
+  if (!marketCache || !(marketCache.plugins || []).length) {
+    box.innerHTML = '<div class="plug-empty">市场里暂时没有插件，或市场源不可用。可在「市场源设置」里换一个地址。</div>';
+    return;
+  }
+  box.innerHTML = marketCache.plugins.map((v) =>
+    '<article class="plug-card market-card">' +
+      '<div class="plug-card-top"><div class="plug-ico">' + ico('up') + '</div>' +
+      '<div class="plug-card-txt"><div class="plug-name">' + esc(v.name) +
+        '<span class="plug-ver">v' + esc(v.version) + '</span>' +
+        '<span class="plug-badge">' + esc(ENGINE_LABEL[v.engine] || v.engine || '插件') + '</span>' +
+        (v.installed ? '<span class="plug-badge ok">已安装' + (v.installed_version ? ' v' + esc(v.installed_version) : '') + '</span>' : '') +
+        (v.update_available ? '<span class="plug-badge warn">可更新</span>' : '') +
+      '</div>' +
+      '<p class="plug-desc">' + esc(v.description || '') + '</p>' +
+      '<div class="plug-match"><code>' + esc(v.id) + '</code> · ' + esc(v.author || '') + '</div>' +
+      ((v.tags || []).length ? '<div class="plug-tags">' + v.tags.map((t) => '<span class="plug-tag">' + esc(t) + '</span>').join('') + '</div>' : '') +
+      '</div></div>' +
+      '<div class="plug-card-actions"><span class="spacer"></span>' +
+        '<button class="btn primary sm" data-plug-act="market-install" data-pid="' + esc(v.id) + '">' +
+        (v.update_available ? '更新' : v.installed ? '重新安装' : '安装') + '</button>' +
+      '</div>' +
+    '</article>').join('');
+}
+
+/* ---------- 上传 ---------- */
+async function uploadZip(file) {
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch('/api/plugins/upload', { method: 'POST', credentials: 'same-origin', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    toast('插件「' + (d.plugin && d.plugin.name || '新插件') + '」已安装', 'ok');
+    await loadPlugins();
+  } catch (e) { toast('上传失败：' + e.message, 'err'); }
+}
+
+async function uploadDir(files) {
+  if (!files || !files.length) return;
+  const list = Array.from(files).filter((f) => {
+    const p = f.webkitRelativePath || f.name;
+    return !/\/(\.git|bin|node_modules)\//.test('/' + p) && f.size <= 2 * 1024 * 1024;
+  });
+  if (!list.length) { toast('文件夹里没有可用文件', 'err'); return; }
+  const root = (list[0].webkitRelativePath || list[0].name).split('/')[0];
+  const out = { files: {}, binary: {} };
+  const TEXT = /\.(json|go|mod|sum|md|txt|yaml|yml|js|css|html|svg|sh|xml|ini|conf)$/i;
+  for (const f of list) {
+    const rel = (f.webkitRelativePath || f.name).replace(/^[^/]+\//, '');
+    if (!rel) continue;
+    const buf = await f.arrayBuffer();
+    if (TEXT.test(rel)) {
+      out.files[rel] = new TextDecoder('utf-8').decode(buf);
+    } else {
+      let s = '';
+      const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+      out.binary[rel] = btoa(s);
+    }
+  }
+  if (!out.files['plugin.json']) { toast('所选文件夹里没有 plugin.json', 'err'); return; }
+  try {
+    const d = await api('/api/plugins/upload', { method: 'POST', body: {
+      bundle: { files: out.files, binary: out.binary, origin: 'local', source: '本地文件夹：' + root }
+    } });
+    toast('插件「' + (d.plugin && d.plugin.name || '新插件') + '」已安装', 'ok');
+    await loadPlugins();
+  } catch (e) { toast('上传失败：' + e.message, 'err'); }
+}
+
+/* ---------- 统一动作分发 ---------- */
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-plug-act]');
+  if (!b) return;
+  const act = b.dataset.plugAct;
+  const id = b.dataset.pid || '';
+  const sheet = b.closest('.sheet');
+  try {
+    switch (act) {
+      case 'close': closeSheet(); break;
+      case 'config': openPluginConfig(id); break;
+      case 'config-save': {
+        const cfg = collectCfg(sheet);
+        await api('/api/plugins/' + encodeURIComponent(id) + '/config', { method: 'POST', body: { config: cfg } });
+        closeSheet(); toast('配置已保存', 'ok'); await loadPlugins(); break;
+      }
+      case 'toggle': {
+        await api('/api/plugins/' + encodeURIComponent(id) + '/toggle', { method: 'POST', body: { enabled: b.checked } });
+        toast(b.checked ? '插件已启用' : '插件已禁用', 'ok'); await loadPlugins(); break;
+      }
+      case 'test': openPluginTest(id, false); break;
+      case 'debug': openPluginTest(id, true); break;
+      case 'run-test': {
+        const url = ($('#ptUrl') && $('#ptUrl').value || '').trim();
+        if (!url) { toast('请填样例链接', 'err'); break; }
+        b.disabled = true; b.textContent = '运行中…';
+        let d;
+        try {
+          d = await api('/api/plugins/' + encodeURIComponent(id) + (b.dataset.debug === '1' ? '/debug' : '/test'),
+            { method: 'POST', body: { url: url } });
+        } catch (ex) {
+          // 502 也会带 trace，别把调试信息丢掉
+          d = (ex && ex.data) ? Object.assign({ ok: false, error: ex.data.error || ex.message }, { trace: ex.data.trace }) : { ok: false, error: ex.message };
+        }
+        showTestResult(d);
+        b.disabled = false; b.textContent = '运行'; break;
+      }
+      case 'files': openPluginFiles(id); break;
+      case 'edit-file': {
+        const path = b.dataset.path;
+        const fr = await fetch('/api/plugins/' + encodeURIComponent(id) + '/file?path=' + encodeURIComponent(path), { credentials: 'same-origin' });
+        if (!fr.ok) throw new Error('读取文件失败 HTTP ' + fr.status);
+        const txt = await fr.text();
+        const ed = $('#pfEditor');
+        if (ed) { ed.classList.remove('hidden'); $('#pfPath').textContent = path; $('#pfPath').dataset.path = path; $('#pfContent').value = txt; }
+        break;
+      }
+      case 'save-file': {
+        const path = ($('#pfPath') && $('#pfPath').dataset.path) || '';
+        if (!path) { toast('请先选一个文件', 'err'); break; }
+        await api('/api/plugins/' + encodeURIComponent(id) + '/file',
+          { method: 'PUT', body: { path: path, content: $('#pfContent').value } });
+        toast('已保存 ' + path, 'ok'); await loadPlugins(); break;
+      }
+      case 'build': {
+        toast('正在编译…', 'ok');
+        const d = await api('/api/plugins/' + encodeURIComponent(id) + '/build', { method: 'POST', body: {} });
+        if (d.ok) { toast('编译成功：' + (d.message || ''), 'ok'); await loadPlugins(); }
+        else openSheet('<div class="plug-dialog"><h3>编译结果</h3><p>' + esc(d.message || '编译失败') +
+          '</p><pre class="plug-pre">' + esc(d.output || '') + '</pre><div class="sheet-actions"><span class="spacer"></span>' +
+          '<button class="ghost" data-plug-act="close">关闭</button></div></div>');
+        break;
+      }
+      case 'export': window.location.href = '/api/plugins/' + encodeURIComponent(id) + '/export'; break;
+      case 'copy': {
+        const newId = prompt('另存为新插件，输入新 ID（小写字母/数字/_/-）：', id + '_copy');
+        if (!newId) break;
+        await api('/api/plugins/' + encodeURIComponent(id) + '/copy', { method: 'POST', body: { new_id: newId.trim(), name: (plugById(id) || {}).name + ' 副本' } });
+        toast('已另存为 ' + newId.trim(), 'ok'); await loadPlugins(); break;
+      }
+      case 'delete': {
+        if (!confirm('确定删除插件「' + id + '」？目录与配置都会一并删除。')) break;
+        await api('/api/plugins/' + encodeURIComponent(id), { method: 'DELETE' });
+        toast('插件已删除', 'ok'); await loadPlugins(); break;
+      }
+      case 'reload': {
+        await api('/api/plugins/reload', { method: 'POST', body: {} });
+        toast('已重载', 'ok'); await loadPlugins(); break;
+      }
+      case 'do-create': {
+        const cid = ($('#pcId') && $('#pcId').value || '').trim();
+        const cname = ($('#pcName') && $('#pcName').value || '').trim();
+        if (!cid || !cname) { toast('ID 和名称都要填', 'err'); break; }
+        const doms = ($('#pcDomains') && $('#pcDomains').value || '').split(/[,，\s]+/).filter(Boolean);
+        await api('/api/plugins', { method: 'POST', body: {
+          id: cid, name: cname, engine: $('#pcEngine').value,
+          domains: doms, description: ($('#pcDesc') && $('#pcDesc').value || '').trim()
+        } });
+        closeSheet(); toast('插件已创建，可在「文件」里编辑', 'ok'); await loadPlugins(); break;
+      }
+      case 'market-install': {
+        b.disabled = true; b.textContent = '安装中…';
+        await api('/api/marketplace/install', { method: 'POST', body: { id: id } });
+        toast('插件已安装', 'ok');
+        await loadPlugins(); await loadMarket(true); break;
+      }
+      case 'market-config': openMarketConfig(); break;
+      case 'market-config-save': {
+        await api('/api/marketplace/config', { method: 'PUT', body: {
+          url: ($('#mcUrl') && $('#mcUrl').value || '').trim(),
+          proxy_prefix: ($('#mcProxy') && $('#mcProxy').value || '').trim(),
+          cache_minutes: Number(($('#mcCache') && $('#mcCache').value) || 30),
+          enabled: !!($('#mcEnabled') && $('#mcEnabled').checked)
+        } });
+        closeSheet(); toast('市场源已保存', 'ok'); marketCache = null; await loadMarket(true); break;
+      }
+    }
+  } catch (ex) { toast(ex.message || '操作失败', 'err'); if (b.disabled) { b.disabled = false; b.textContent = '运行'; } }
+});
+
+$('#btnPlugUpload') && $('#btnPlugUpload').addEventListener('click', () => $('#plugFileZip').click());
+$('#btnPlugUploadDir') && $('#btnPlugUploadDir').addEventListener('click', () => $('#plugFileDir').click());
+$('#btnPlugCreate') && $('#btnPlugCreate').addEventListener('click', openPluginCreate);
+$('#btnPlugReload') && $('#btnPlugReload').addEventListener('click', async () => {
+  await api('/api/plugins/reload', { method: 'POST', body: {} });
+  toast('已重载', 'ok'); await loadPlugins();
+});
+$('#plugFileZip') && $('#plugFileZip').addEventListener('change', (e) => { uploadZip(e.target.files[0]); e.target.value = ''; });
+$('#plugFileDir') && $('#plugFileDir').addEventListener('change', (e) => { uploadDir(e.target.files); e.target.value = ''; });
+$('#btnMarketRefresh') && $('#btnMarketRefresh').addEventListener('click', () => loadMarket(true));
+$('#btnMarketConfig') && $('#btnMarketConfig').addEventListener('click', openMarketConfig);
 
 function applyBase() {
   const pb = state.settings && state.settings.public_base ? String(state.settings.public_base) : '';
@@ -1551,7 +2058,7 @@ document.addEventListener('click', (e) => {
 });
 
 /* ---------------- 路由 ---------------- */
-const VIEWS = ['home', 'tasks', 'docs', 'settings'];
+const VIEWS = ['home', 'tasks', 'plugins', 'docs', 'settings'];
 // 页面区块可能因缓存出现「新 JS + 旧 HTML」的组合，取不到就回退首页，别让整页卡死
 function viewEl(v) { return document.getElementById('view' + v.charAt(0).toUpperCase() + v.slice(1)); }
 function route() {
@@ -1568,9 +2075,11 @@ function route() {
     if (a.dataset.view === view) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  if (view === 'docs') setDoc(parts[1] === 'mcp' ? 'mcp' : 'api');
+  if (view === 'docs') setDoc(['api', 'plugins', 'mcp'].indexOf(parts[1]) >= 0 ? parts[1] : 'api');
   if (view === 'settings') setSetTab(parts[1] || state.setTab);
-  document.title = view === 'docs' ? 'API / MCP 文档 · Media Super'
+  if (view === 'plugins') { setPlug(parts[1] === 'market' ? 'market' : 'installed'); loadPlugins(); }
+  document.title = view === 'docs' ? '开发文档 · Media Super'
+    : view === 'plugins' ? '插件 · Media Super'
     : view === 'settings' ? '设置 · Media Super'
     : view === 'tasks' ? '任务 · Media Super'
     : '首页 · Media Super';

@@ -65,39 +65,68 @@ queued ──► running ──► merging ──► completed
 |---|---|
 | `api.go` | 路由注册、任务增删改查、文件流（Range）、SSE、静态资源 |
 | `auth.go` | PBKDF2 密码、HMAC 签名会话 Cookie、API Key 校验 |
-| `mcp.go` | JSON-RPC 2.0 / MCP 工具实现 |
+| `mcp.go` | JSON-RPC 2.0 / MCP 工具实现（基础 11 个） |
+| `mcp_plugins.go` | 插件开发类 MCP 工具（25 个） |
 | `system.go` | 版本信息、检查更新、一键更新、改密码、ffmpeg 组件 |
-| `parse.go` | `/api/parsers` 插件列表、`/api/parse` 统一解析入口 |
+| `parse.go` | `/api/parsers` 插件列表、`/api/parse` 统一解析入口（优先走 `plugin.Manager`） |
+| `plugins.go` | 插件管理与市场全套 REST（列表/创建/上传/配置/启停/文件/差量/编译/测试/调试/导出/安装） |
 | `static.go` | 把 `web.FS` 读进内存 map（合计 < 300KB） |
 | `stdio.go` | 把 stdio 的 JSON-RPC 转发给远端 HTTP（Claude Desktop 兼容） |
 
 鉴权接受三种凭证：会话 Cookie、`Authorization: Bearer <API Key>`、`?token=<API Key>`。
 最后一种给 `<video>` 和 `EventSource` 用，它们没法自定义请求头。
 
-### `internal/parser`
+### `internal/plugin`
 
-链接解析做成插件注册表，与下载引擎完全解耦：
+插件系统的核心，**一个插件 = 一个文件夹 + plugin.json**。
 
 | 文件 | 内容 |
 |---|---|
-| `parser.go` | `Parser` 接口、`Result` / `Item` 统一结构、`Registry`、`Default()` |
-| `wechat_mp.go` | 公众号文章插件：匹配 `mp.weixin.qq.com/s/*`，调解析服务，把 `movie_down_url` 映射成视频 Item |
+| `spec.go` | `Manifest` 全字段、严格校验（未知字段也拒绝）、`ConfigField` / `MatchRule` / `Declarative` 规范、配置校验 |
+| `store.go` | 插件目录、运行期状态 `_state.json`、文件读写、路径安全 `safeJoin`、zip 导入导出 |
+| `manager.go` | 注册表、扫描重载、域名匹配与优先级、创建/导入/复制/删除/启停/配置、内置插件落盘 |
+| `runtime.go` | 三种执行引擎 + `Trace` 调试追踪 + `go build` 编译 |
+| `market.go` | 在线市场：读 `marketplace.json`、代理优先下载、缓存、安装 / 更新 |
+| `templates.go` | 内置公众号插件清单、脚手架模板、Go SDK 源码模板 |
+| `util.go` | 模板渲染、点路径取值、HTML 清洗、差量修改 `ApplyPatches` |
+| `plugin_test.go` | 规范校验、匹配、模板、配置、声明式执行、patch、zip、市场索引一致性 |
+
+三种引擎：
+
+```
+builtin      → 注册进 builtinFuncs 的进程内函数（公众号解析）
+declarative  → 内置 HTTP 规则解释器：请求模板 → JSON 解析 → 字段映射 → 数组展开
+go           → exec 独立可执行文件，stdin 一行 JSON / stdout 最后一行 JSON
+```
+
+`plugin.Manager` 在 `app.Run` 里创建，注入 `server.Server`；`/api/parse` 按「启用 + match 命中 +
+priority 排序」挑第一个插件执行，`Match` 只做本地字符串/正则判断（零网络开销）。
+状态与配置值集中在 `_state.json`，不写进插件目录，插件文件夹可原样提交 Git / 导出。
+完整规范见 [PLUGINS.md](PLUGINS.md)。
+
+### `internal/parser`
+
+保留统一的 `Result` / `Item` 数据结构与公众号解析的 Go 实现，供 `builtin` 引擎调用：
+
+| 文件 | 内容 |
+|---|---|
+| `parser.go` | `Parser` 接口、`Result` / `Item` 统一结构、`Registry`、`Default()`（兼容兜底） |
+| `wechat_mp.go` | 公众号文章：调解析服务，把 `movie_down_url` 映射成视频 Item；支持配置超时与 Token |
 | `parser_test.go` | httptest mock 解析服务，覆盖匹配、字段映射、失败与空数据 |
 
 首页提交流程：
 
 ```
 POST /api/parse {url}
-  ├─ Registry.Match 无命中 → {matched:false} → 前端照旧 POST /api/tasks（直链下载）
-  └─ 命中插件 → Parse() → {matched:true, result} → 前端展示 result
-                                              → 勾选 items → 逐个 POST /api/tasks
+  ├─ plugin.Manager.Match 无命中 → {matched:false} → 前端照旧 POST /api/tasks（直链下载）
+  └─ 命中插件 → Manager.Run（builtin / declarative / go）
+                 → {matched:true, plugin, result, trace?} → 前端展示 result
+                 → 勾选 items → 逐个 POST /api/tasks（重复项按 409 统计为「跳过」）
 ```
 
-`Match` 只做本地字符串判断（零网络开销），`Parse` 才访问外部服务（15s 客户端超时、8MB 响应上限，
-超时会翻译成「解析服务响应超时，请稍后重试」而不是底层英文报错）。
-`Result` 是前端唯一认识的形状，插件特有字段放 `Extra`；新增站点只需实现接口并在 `Default()` 里
-`Register` 一行，不用改路由、前端或下载引擎。解析出的 `Item.URL` 走现有 `downloadDirect`，
-一般是 mp4 直链，不经过 m3u8 / ffmpeg。
+`Result` 是前端唯一认识的形状，插件特有字段放 `Extra`；`Extra.auto_download` 可让解析卡片自动全量入队。
+新增站点支持不需要改主程序：上传一个文件夹，或往 `marketplace/` 加一个插件并登记索引。
+解析出的 `Item.URL` 走现有 `downloadDirect`，一般是 mp4 直链，不经过 m3u8 / ffmpeg。
 
 ### `internal/updater`
 
@@ -110,7 +139,10 @@ POST /api/parse {url}
 `*.html *.js *.css *.webmanifest *.svg *.png` 打进二进制，启动时由 `server.LoadWebAssets`
 一次性读进内存。
 
-路由用 hash（`#/tasks`、`#/docs/api`、`#/settings`），未知路径回落 `index.html`。
+路由用 hash（`#/tasks`、`#/plugins`、`#/docs/api|plugins|mcp`、`#/settings`），未知路径回落 `index.html`。
+导航四页为「首页 / 任务 / 插件 / 设置」；文档页不占导航项，由插件页顶部的「插件开发文档」入口进入。
+插件页自己的逻辑在 `app.js` 的 `setPlug / loadPlugins / renderPlugins / openPluginConfig / loadMarket` 等函数中，
+全部走 `data-plug-act` 事件委托，弹窗复用 `openSheet`。
 
 ---
 

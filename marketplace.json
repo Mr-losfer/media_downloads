@@ -1,0 +1,46 @@
+{
+  "schema_version": "1",
+  "name": "Media Super 官方插件市场",
+  "owner": "Mr-losfer",
+  "repo": "Mr-losfer/media_downloads",
+  "updated_at": "2026-11-15",
+  "base_url": "marketplace",
+  "plugins": [
+    {
+      "id": "wechat_mp_lite",
+      "name": "公众号解析（规则版）",
+      "version": "1.0.0",
+      "description": "内置公众号插件的 declarative 版本：不改一行 Go 代码，用 plugin.json 里的 HTTP + 字段映射规则完成同样的解析。适合作为自定义插件的起点。",
+      "author": "Media Super",
+      "engine": "declarative",
+      "tags": ["公众号", "规则版", "示例"],
+      "path": "wechat_mp_lite",
+      "files": ["plugin.json", "README.md"],
+      "min_app_version": "2.5.9"
+    },
+    {
+      "id": "json_api_parser",
+      "name": "通用 JSON 解析接口",
+      "version": "1.0.2",
+      "description": "对接任意返回 JSON 的自建解析服务，把字段映射成标题/封面/作者，并把数组展开成可下载视频列表。装上后只需在配置弹窗里填接口地址。",
+      "author": "Media Super",
+      "engine": "declarative",
+      "tags": ["通用", "模板", "零编译"],
+      "path": "json_api_parser",
+      "files": ["plugin.json", "README.md"],
+      "min_app_version": "2.5.9"
+    },
+    {
+      "id": "go_demo",
+      "name": "Go 插件开发示例",
+      "version": "1.1.0",
+      "description": "多文件 Go 插件示例（main.go 负责协议，parse.go 负责业务），演示 SDK 的 stdin/stdout JSON 行协议、配置项读取与编译运行。",
+      "author": "Media Super",
+      "engine": "go",
+      "tags": ["Go", "SDK", "多文件", "示例"],
+      "path": "go_demo",
+      "files": ["plugin.json", "main.go", "parse.go", "go.mod", "README.md"],
+      "min_app_version": "2.5.9"
+    }
+  ]
+}

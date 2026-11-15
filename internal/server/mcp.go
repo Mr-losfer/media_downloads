@@ -50,7 +50,7 @@ func p(typ, desc string) map[string]any {
 }
 
 func mcpTools() []mcpTool {
-	return []mcpTool{
+	tools := []mcpTool{
 		{
 			Name:        "submit_download",
 			Description: "提交一个视频/音频下载任务。支持 m3u8(HLS)、mp4、flv、ts 等直链；m3u8 会自动多线程拉分片并转封装成 mp4。同一链接已存在任务会直接拦截重复下载（标题防重可在设置里开启），失败/已取消的任务不拦截。返回任务 ID。",
@@ -139,6 +139,8 @@ func mcpTools() []mcpTool {
 			InputSchema: obj(map[string]any{}),
 		},
 	}
+	tools = append(tools, pluginMCPTools()...)
+	return tools
 }
 
 type toolResult struct {
@@ -199,7 +201,8 @@ func (s *Server) dispatch(req rpcRequest, host string) (*rpcResponse, bool) {
 			"protocolVersion": ver,
 			"capabilities":    map[string]any{"tools": map[string]any{"listChanged": false}},
 			"serverInfo":      map[string]any{"name": version.AppID, "version": version.Version},
-			"instructions":    "视频下载管理服务。用 submit_download 提交 m3u8/mp4 直链，用 get_task / list_tasks 查询进度（progress 为百分比，speed 单位字节/秒），用 get_download_link 获取可播放链接。",
+			"instructions": "视频下载管理服务。用 submit_download 提交 m3u8/mp4 直链，用 get_task / list_tasks 查询进度（progress 为百分比，speed 单位字节/秒），用 get_download_link 获取可播放链接。" +
+				"另提供完整插件开发能力：plugin_create → plugin_write_file / plugin_patch → plugin_save → plugin_validate → plugin_build → plugin_test / plugin_debug → plugin_export，以及 marketplace_list / marketplace_install 在线市场。",
 		}
 
 	case "notifications/initialized", "notifications/cancelled", "notifications/roots/list_changed":
@@ -385,6 +388,10 @@ func (s *Server) callTool(name string, args json.RawMessage, host string) (any, 
 
 	case "get_stats":
 		return textResult(s.m.Stats(), false), nil
+	}
+	// 插件开发 / 市场相关工具统一走单独的分发器，避免主 switch 过长。
+	if strings.HasPrefix(name, "plugin_") || strings.HasPrefix(name, "marketplace_") || name == "parse_url" {
+		return s.callPluginTool(name, args)
 	}
 	return nil, fmt.Errorf("未知工具: %s", name)
 }

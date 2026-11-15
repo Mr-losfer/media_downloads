@@ -1,0 +1,83 @@
+{
+  "id": "wechat_mp_lite",
+  "name": "公众号解析（规则版）",
+  "version": "1.0.0",
+  "author": "Media Super",
+  "description": "用 declarative 规则解析 mp.weixin.qq.com/s/ 文章，零编译、上传即可用。",
+  "homepage": "https://github.com/Mr-losfer/media_downloads",
+  "engine": "declarative",
+  "tags": ["公众号", "规则版", "示例"],
+  "min_app_version": "2.5.9",
+  "match": {
+    "domains": ["mp.weixin.qq.com"],
+    "path_prefixes": ["/s", "/s/"],
+    "schemes": ["http", "https"],
+    "priority": 1
+  },
+  "capabilities": { "parse": true, "configurable": true },
+  "config_schema": [
+    {
+      "key": "api_base",
+      "label": "解析接口地址",
+      "type": "url",
+      "required": true,
+      "default": "https://t.losfer.cn/apis/parse/mp/parseArticle",
+      "placeholder": "https://your-domain/apis/parse/mp/parseArticle",
+      "desc": "GET 接口，接受 url 参数，返回 {code:1, data:{...}}。",
+      "group": "接口"
+    },
+    {
+      "key": "api_token",
+      "label": "接口 Token",
+      "type": "password",
+      "default": "",
+      "desc": "可选，非空时写入 Authorization 头。",
+      "group": "接口"
+    },
+    {
+      "key": "auto_download",
+      "label": "解析后自动下载全部视频",
+      "type": "switch",
+      "default": false,
+      "desc": "开启后解析卡片自动把全部视频加入下载队列。",
+      "group": "行为"
+    }
+  ],
+  "declarative": {
+    "request": {
+      "method": "GET",
+      "url": "{{config.api_base}}",
+      "query": { "url": "{{source_url}}" },
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "{{config.api_token}}"
+      },
+      "timeout_sec": 15
+    },
+    "response": {
+      "format": "json",
+      "success_when": "code == 1",
+      "error_field": "msg",
+      "fields": {
+        "title": "data.title",
+        "cover": "data.cover",
+        "author": "data.author",
+        "description": "data.description",
+        "publish_time": "data.publish_time",
+        "content": "data.content",
+        "source_url": "data.source_url",
+        "images": "data.images"
+      },
+      "items": {
+        "from": "data.movie_down_url",
+        "url": "{{value}}",
+        "title": "{{title}} · {{index1}}",
+        "kind": "video",
+        "format": "mp4",
+        "headers": { "Referer": "https://mp.weixin.qq.com/" },
+        "max": 100
+      }
+    }
+  },
+  "changelog": "1.0.0 首个规则版示例。"
+}

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"mediasuper/internal/engine"
+	"mediasuper/internal/plugin"
 	"mediasuper/internal/updater"
 	"mediasuper/internal/version"
 )
@@ -26,6 +27,7 @@ type Server struct {
 	auth *Auth
 	web  map[string]staticFile
 	up   *updater.Manager
+	pm   *plugin.Manager // 插件系统（nil 时 /api/parse 回退到旧内置解析器）
 
 	startedAt time.Time
 
@@ -33,12 +35,13 @@ type Server struct {
 	lgMap map[string][]int64
 }
 
-func NewServer(m *engine.Manager, auth *Auth, web map[string]staticFile, up *updater.Manager) *Server {
+func NewServer(m *engine.Manager, auth *Auth, web map[string]staticFile, up *updater.Manager, pm *plugin.Manager) *Server {
 	return &Server{
 		m:         m,
 		auth:      auth,
 		web:       web,
 		up:        up,
+		pm:        pm,
 		startedAt: time.Now(),
 		lgMap:     make(map[string][]int64),
 	}
@@ -113,6 +116,42 @@ func (s *Server) Handler() http.Handler {
 	// 链接解析（插件化）：列出已注册插件 / 统一解析入口
 	mux.HandleFunc("GET /api/parsers", s.needAuth(s.handleListParsers))
 	mux.HandleFunc("POST /api/parse", s.needAuth(s.handleParse))
+
+	// 插件管理：列表 / 创建 / 导入 / 配置 / 启停 / 文件编辑 / 差量修改 /
+	// 编译 / 测试 / 调试 / 导出 / 复制 / 删除
+	mux.HandleFunc("GET /api/plugins", s.needAuth(s.handlePluginList))
+	mux.HandleFunc("POST /api/plugins", s.needAuth(s.handlePluginCreate))
+	mux.HandleFunc("POST /api/plugins/upload", s.needAuth(s.handlePluginUpload))
+	mux.HandleFunc("POST /api/plugins/validate", s.needAuth(s.handlePluginValidate))
+	mux.HandleFunc("POST /api/plugins/reload", s.needAuth(s.handlePluginReloadAll))
+	mux.HandleFunc("GET /api/plugins/{id}", s.needAuth(s.handlePluginGet))
+	mux.HandleFunc("PUT /api/plugins/{id}", s.needAuth(s.handlePluginUpdate))
+	mux.HandleFunc("DELETE /api/plugins/{id}", s.needAuth(s.handlePluginDelete))
+	mux.HandleFunc("GET /api/plugins/{id}/config", s.needAuth(s.handlePluginConfig))
+	mux.HandleFunc("POST /api/plugins/{id}/config", s.needAuth(s.handlePluginConfig))
+	mux.HandleFunc("POST /api/plugins/{id}/toggle", s.needAuth(s.handlePluginToggle))
+	mux.HandleFunc("POST /api/plugins/{id}/copy", s.needAuth(s.handlePluginCopy))
+	mux.HandleFunc("POST /api/plugins/{id}/test", s.needAuth(func(w http.ResponseWriter, r *http.Request) {
+		s.handlePluginTest(w, r, false)
+	}))
+	mux.HandleFunc("POST /api/plugins/{id}/debug", s.needAuth(func(w http.ResponseWriter, r *http.Request) {
+		s.handlePluginTest(w, r, true)
+	}))
+	mux.HandleFunc("GET /api/plugins/{id}/files", s.needAuth(s.handlePluginFiles))
+	mux.HandleFunc("GET /api/plugins/{id}/file", s.needAuth(s.handlePluginFile))
+	mux.HandleFunc("PUT /api/plugins/{id}/file", s.needAuth(s.handlePluginFile))
+	mux.HandleFunc("DELETE /api/plugins/{id}/file", s.needAuth(s.handlePluginFile))
+	mux.HandleFunc("POST /api/plugins/{id}/patch", s.needAuth(s.handlePluginPatch))
+	mux.HandleFunc("POST /api/plugins/{id}/build", s.needAuth(s.handlePluginBuild))
+	mux.HandleFunc("POST /api/plugins/{id}/reload", s.needAuth(s.handlePluginReload))
+	mux.HandleFunc("GET /api/plugins/{id}/export", s.needAuth(s.handlePluginExport))
+
+	// 在线插件市场（对接 Git 仓库的 marketplace.json）
+	mux.HandleFunc("GET /api/marketplace", s.needAuth(s.handleMarketList))
+	mux.HandleFunc("POST /api/marketplace/refresh", s.needAuth(s.handleMarketRefresh))
+	mux.HandleFunc("POST /api/marketplace/install", s.needAuth(s.handleMarketInstall))
+	mux.HandleFunc("GET /api/marketplace/config", s.needAuth(s.handleMarketConfig))
+	mux.HandleFunc("PUT /api/marketplace/config", s.needAuth(s.handleMarketConfig))
 
 	// 系统：版本信息 / 更新检测 / 一键更新 / 改管理员密码
 	mux.HandleFunc("GET /api/system/info", s.needAuth(s.handleSystemInfo))

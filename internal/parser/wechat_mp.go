@@ -30,16 +30,27 @@ func wechatEndpoint() string {
 // 不需要 ffmpeg 合成），插件把它们映射成统一的 Result/Item。
 type WechatMP struct {
 	endpoint string
+	token    string
 	client   *http.Client
 }
 
 func NewWechatMP(endpoint string) *WechatMP {
+	return NewWechatMPEx(endpoint, "", 15*time.Second)
+}
+
+// NewWechatMPEx 供插件系统按用户在配置弹窗里保存的值构造实例。
+// token 非空时以 Authorization: Bearer 发送，便于对接需要鉴权的自建解析服务。
+func NewWechatMPEx(endpoint, token string, timeout time.Duration) *WechatMP {
 	if strings.TrimSpace(endpoint) == "" {
 		endpoint = defaultWechatEndpoint
 	}
+	if timeout <= 0 || timeout > 60*time.Second {
+		timeout = 15 * time.Second
+	}
 	return &WechatMP{
 		endpoint: strings.TrimSpace(endpoint),
-		client:   &http.Client{Timeout: 15 * time.Second},
+		token:    strings.TrimSpace(token),
+		client:   &http.Client{Timeout: timeout},
 	}
 }
 
@@ -150,6 +161,9 @@ func (p *WechatMP) Parse(ctx context.Context, rawURL string) (*Result, error) {
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "MediaSuper-Parser/1.0")
+	if p.token != "" {
+		req.Header.Set("Authorization", "Bearer "+p.token)
+	}
 
 	resp, err := p.client.Do(req)
 	if err != nil {

@@ -1,0 +1,54 @@
+{
+  "id": "go_demo",
+  "name": "Go 插件开发示例",
+  "version": "1.1.0",
+  "author": "Media Super",
+  "description": "多文件 Go 插件示例：main.go 负责 SDK 协议，parse.go 负责业务逻辑，演示配置读取、日志与测试调试。",
+  "homepage": "https://github.com/Mr-losfer/media_downloads",
+  "engine": "go",
+  "tags": ["Go", "SDK", "多文件", "示例"],
+  "min_app_version": "2.5.9",
+  "match": {
+    "domains": ["demo.example.com"],
+    "schemes": ["http", "https"],
+    "priority": 0
+  },
+  "capabilities": { "parse": true, "configurable": true },
+  "config_schema": [
+    {
+      "key": "api_base",
+      "label": "解析接口地址（可选）",
+      "type": "url",
+      "default": "",
+      "desc": "留空时启用演示模式：直接把提交的链接包装成一条下载对象，无需外部服务即可测试。"
+    },
+    {
+      "key": "prefix",
+      "label": "标题前缀",
+      "type": "text",
+      "default": "[Go插件]",
+      "desc": "演示 text 配置项如何传给 Go 代码。"
+    },
+    {
+      "key": "max_items",
+      "label": "最多返回条数",
+      "type": "number",
+      "default": 10,
+      "min": 1,
+      "max": 100,
+      "desc": "演示 number 配置项的校验范围。"
+    },
+    {
+      "key": "verbose",
+      "label": "输出调试日志",
+      "type": "switch",
+      "default": true,
+      "desc": "开启后 stderr 日志会在「调试」结果里展示。"
+    }
+  ],
+  "entry": {
+    "sources": ["main.go", "parse.go"],
+    "binary": "bin/go_demo"
+  },
+  "changelog": "1.1.0 拆成多文件，补充配置项与演示模式。"
+}

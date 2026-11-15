@@ -67,7 +67,7 @@ func (u *Manager) FFmpegInstalled() bool {
 }
 
 // EnsureFFmpeg 在后台补齐 ffmpeg 组件。needInstall 为 false 时直接返回 ready
-//（系统里已经有可用的 ffmpeg，不必下载）。
+// （系统里已经有可用的 ffmpeg，不必下载）。
 //
 // onProgress 用于把状态变化广播给前端；可以为空。
 // 返回最终状态，err 非空只在确实需要补齐但失败时出现。

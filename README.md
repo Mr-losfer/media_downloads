@@ -27,7 +27,8 @@ https://github.com/Mr-losfer/media_downloads
 | 能力 | 说明 |
 |---|---|
 | 协议 | HLS(m3u8) / mp4 / flv / ts / mkv / webm / mov / 音频 |
-| 链接解析 | 插件化：首页粘贴公众号文章 `mp.weixin.qq.com/s/*` 自动解析标题/封面/作者/简介/图片，把视频直链列成可勾选下载对象（一般 mp4、无需合成）；新增站点只需注册一个插件 |
+| 链接解析 | 首页粘贴公众号文章 `mp.weixin.qq.com/s/*` 自动解析标题/封面/作者/简介/图片，把视频直链列成可勾选下载对象（一般 mp4、无需合成）；命中的插件由域名匹配决定 |
+| 插件系统 | **文件夹即插件**：`plugin.json` 声明匹配域名、可视化配置项与执行规则，Go 插件可含多个 `.go` 文件；三种引擎 `builtin` / `declarative`（零编译）/ `go`（子进程 JSON 协议）；插件页支持本地上传、在线市场、启停、配置弹窗、文件编辑、差量修改、编译、测试/调试、导出；公众号解析已纳入插件体系；MCP 提供 25 个开发插件工具 |
 | HLS | master 多码率自动选最高（可切最低）、`EXT-X-KEY` AES-128 解密、`EXT-X-BYTERANGE`、`EXT-X-MAP`(fMP4 init 段)、可去掉片头/片尾 N 个分片（黑屏或台标） |
 | 下载 | 分片并发池 + 单分片重试；直链 N 段 Range 并行；不支持 Range 自动降级单流 |
 | 防重复下载 | 提交时**只按链接**判断，同一个链接已有任务（排队 / 下载中 / 已完成）直接拦截，返回 `409` 且不创建第二条；「设置 → 下载」可开启**标题防重**，同标题也拦截。失败 / 已取消的任务不拦截 |
@@ -38,7 +39,7 @@ https://github.com/Mr-losfer/media_downloads
 | 系统 | 版本信息、更新检测、一键更新、首页新版本弹窗（可跳过当前版本）、自动更新（2 小时巡检 / 空闲升级）、修改管理员密码 |
 | 鉴权 | 后台密码（PBKDF2-SHA256 120k 轮）+ 签名 Cookie；API/MCP 用 Bearer API Key |
 | 健壮性 | 重启后未完成任务自动重排；启动清理残留分片；磁盘 <1GB 拒收新任务；设置越界自动夹紧 |
-| 界面 | 移动优先单页应用：手机端四页底部导航、桌面端（≥1024px）左侧栏导航（首页 = 按时段问候 + 下载卡片 / 任务 / 文档 / 设置）、设置内再按更新/下载/存储/通知/安全分类、提交后自动跳转任务页、夜间 / 白天一键切换（圆形水波过渡）、手机端关闭橡皮筋回弹、底部抽屉、SSE 增量刷新、内置 API / MCP 文档页、PWA 可加到主屏 |
+| 界面 | 移动优先单页应用：手机端四页底部导航、桌面端（≥1024px）左侧栏导航（首页 = 按时段问候 + 下载卡片 / 任务 / 插件 / 设置）、插件页内置「插件开发文档」入口、文档页含 REST API / 插件开发 / MCP 三个分类、设置内再按更新/下载/存储/通知/安全分类、提交后自动跳转任务页、夜间 / 白天一键切换（圆形水波过渡）、手机端关闭橡皮筋回弹、底部抽屉、SSE 增量刷新、PWA 可加到主屏 |
 
 ### 公众号文章怎么下载
 
@@ -46,10 +47,10 @@ https://github.com/Mr-losfer/media_downloads
 文章图片与正文摘要），并把文章里的视频直链列成可勾选列表（默认全选）；点「下载选中」批量入队并跳到任务页。
 视频一般是 **mp4 直链，不走 m3u8 合成、不需要 ffmpeg**。纯图文文章会提示「没有解析到视频」。
 
-解析能力是**插件化**的：`internal/parser` 定义 `Parser` 接口与统一 `Result`，注册表按 URL 依次匹配。
-新增站点支持只需实现 `Match` / `Parse` 并注册一行，**前端与下载引擎都不用改**。当前内置插件：
-`wechat_mp`（公众号文章，调用 `t.losfer.cn` 解析服务，可用环境变量 `MS_MP_PARSE_API` 换成自建地址）。
-接口见下方 REST API 与文档页的「链接解析」一节。
+解析能力是**插件化**的：`internal/plugin` 负责插件规范、目录、配置、匹配与执行，`internal/parser` 定义统一
+`Result` / `Item` 结构。插件页「配置」可改公众号解析的接口地址、超时、Token 与「解析后自动下载」。
+新增站点支持不用改主程序：在插件页上传一个文件夹，或在 `marketplace/` 里加一个插件并登记 `marketplace.json`。
+完整规范见 **[docs/PLUGINS.md](docs/PLUGINS.md)** 与应用内「插件 → 插件开发文档」。
 
 ## 快速开始
 
@@ -140,6 +141,8 @@ MS_ADMIN_PASS=losfer MS_SAVE_DIRS="/data/videos:本地" ./mediasuper -addr :8080
 
 所有接口需 `Authorization: Bearer <API Key>`（浏览器后台另可用 Cookie）。
 播放类接口额外支持 `?token=<API Key>`，方便 `<video>` / EventSource 使用。
+**完整版**（每个接口的请求体、响应示例、字段表、错误码、提交示范）见应用内「插件 → 插件开发文档 → REST API」，
+插件专项接口另见 [docs/PLUGINS.md](docs/PLUGINS.md)。
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
@@ -166,7 +169,19 @@ MS_ADMIN_PASS=losfer MS_SAVE_DIRS="/data/videos:本地" ./mediasuper -addr :8080
 | GET | `/api/system/update` | 检查更新（`?force=1` 跳过缓存） |
 | POST | `/api/system/update` | 下载并应用更新，随后重启 |
 | POST | `/api/system/password` | `{"old_password":"…","new_password":"…"}` |
-| POST | `/mcp` | MCP JSON-RPC 2.0 端点 |
+| POST | `/api/system/ffmpeg` | 安装 / 补齐 ffmpeg 组件 |
+| GET | `/api/plugins` | 插件列表（含配置 schema、状态、文件清单） |
+| POST | `/api/plugins` | 新建脚手架 / 内联导入 |
+| POST | `/api/plugins/upload` · `/validate` · `/reload` | 上传 zip / 校验清单 / 重载 |
+| GET/PUT/DELETE | `/api/plugins/{id}` | 详情 / 覆盖 plugin.json / 删除 |
+| POST | `/api/plugins/{id}/config` · `/toggle` · `/copy` | 配置 / 启停 / 另存 |
+| GET/PUT/DELETE | `/api/plugins/{id}/file` · `GET /files` | 在线编辑源码 |
+| POST | `/api/plugins/{id}/patch` · `/build` · `/test` · `/debug` · `/reload` | 差量修改 / 编译 / 测试 / 调试 / 重载 |
+| GET | `/api/plugins/{id}/export` | 导出 zip（不含编译产物） |
+| GET | `/api/marketplace` | 在线插件市场（代理优先 / 直连兜底） |
+| POST | `/api/marketplace/refresh` · `/install` | 刷新 / 安装市场插件 |
+| GET/PUT | `/api/marketplace/config` | 市场源地址 / 代理 / 缓存 |
+| POST | `/mcp` | MCP JSON-RPC 2.0 端点（36 个工具，含 25 个插件开发工具） |
 
 ```bash
 KEY=ms_xxxxxxxx
@@ -182,8 +197,14 @@ curl -s http://192.168.1.123:9099/api/tasks -H "Authorization: Bearer $KEY"
 端点：`POST http://<NAS-IP>:9099/mcp`，鉴权 `Authorization: Bearer <API Key>`。
 协议：JSON-RPC 2.0 / Streamable HTTP，支持 `initialize`、`tools/list`、`tools/call`、`ping`。
 
-工具（11 个）：`submit_download`、`list_tasks`、`get_task`、`cancel_task`、`retry_task`、
-`delete_task`、`rename_task`、`get_download_link`、`get_settings`、`update_settings`、`get_stats`
+工具（36 个）：基础 11 个 —— `submit_download`、`list_tasks`、`get_task`、`cancel_task`、`retry_task`、
+`delete_task`、`rename_task`、`get_download_link`、`get_settings`、`update_settings`、`get_stats`；
+插件开发 25 个 —— `plugin_create`、`plugin_update_meta`、`plugin_write_file`、`plugin_read_file`、
+`plugin_delete_file`、`plugin_patch`、`plugin_save`、`plugin_validate`、`plugin_build`、`plugin_test`、
+`plugin_debug`、`plugin_list`、`plugin_get`、`plugin_files`、`plugin_config`、`plugin_set_config`、
+`plugin_toggle`、`plugin_copy`、`plugin_delete`、`plugin_upload`、`plugin_export`、`parse_url`、
+`marketplace_list`、`marketplace_install`、`plugin_market_config`。
+典型流程：创建 → 写代码 → 差量修改 → 保存 → 校验 → 编译 → 调试 → 测试 → 导出上架。
 
 支持 HTTP 直连的客户端（Cherry Studio / Cline / 自研 Agent）：
 
@@ -243,17 +264,20 @@ curl -s http://192.168.1.123:9099/api/tasks -H "Authorization: Bearer $KEY"
 cmd/mediasuper/         程序入口（参数解析 / -version / -stdio）
 internal/app/           装配层：数据库、设置、HTTP 服务、优雅退出
 internal/engine/        下载引擎：调度、m3u8、Range 分段、ffmpeg、SSE、Webhook
-internal/parser/        插件化链接解析：Parser 接口 / 注册表 / 公众号文章插件
-internal/server/        HTTP：REST、鉴权、MCP、静态资源、系统接口
+internal/plugin/        插件系统：plugin.json 规范、目录与状态、配置、匹配、三种执行引擎、市场
+internal/parser/        统一 Result 结构 / 内置公众号解析实现（供 builtin 引擎调用）
+internal/server/        HTTP：REST、鉴权、MCP（36 工具）、插件 API、静态资源、系统接口
 internal/updater/       更新检测 / 下载校验 / 热切换
 internal/version/       版本号（构建时 -ldflags 注入）
 web/                    前端（原生 JS，embed 进二进制）
 fnpack.json             FnDepot 外部源 V2 索引（商店上架）
+marketplace.json        在线插件市场索引（对接 Git，git push 即上架）
+marketplace/<id>/       市场里的示例插件（规则版公众号 / 通用 JSON 接口 / Go 多文件示例）
 assets/mediasuper/      商店图标、预览图、README、更新内容
 deploy/docker/          Dockerfile、构建用 compose
 deploy/fnos/            fnOS fpk 模板（manifest / cmd / config / ui）
 scripts/                build-release.sh、build-fpk.sh、git-push.sh
-docs/                   部署、更新、fnOS、FnDepot 上架、架构、版本列表
+docs/                   插件规范、部署、更新、fnOS、FnDepot 上架、架构、版本列表
 .release-notes          本次「更新内容」（发布脚本读取，支持多行与高亮标记）
 .github/workflows/      Release 与多架构镜像流水线
 ```
@@ -264,6 +288,7 @@ docs/                   部署、更新、fnOS、FnDepot 上架、架构、版�
 
 | 文档 | 内容 |
 |---|---|
+| [docs/PLUGINS.md](docs/PLUGINS.md) | **插件开发规范**：目录结构、plugin.json 全字段、配置 schema、三种引擎、Go SDK 协议、市场上架、API / MCP 速查 |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Docker 单容器 / Compose / 镜像源 / 目录权限 |
 | [docs/UPDATE.md](docs/UPDATE.md) | 更新检测、一键更新、代理策略、回滚 |
 | [docs/FNOS.md](docs/FNOS.md) | fpk 打包流程、安装、日志排查 |
@@ -272,6 +297,17 @@ docs/                   部署、更新、fnOS、FnDepot 上架、架构、版�
 | [docs/RELEASES.md](docs/RELEASES.md) | 历史构建列表 |
 
 ## 常见问题
+
+**怎么给一个新网站写解析插件？**
+最快的做法：插件页 →「新建插件」选 `declarative`，填匹配域名；在「文件」里编辑 `plugin.json` 的
+`declarative.request / response`，用「配置」填接口地址，用「测试 / 调试」验证；不需要写 Go、不需要编译、不需要重启。
+需要复杂逻辑时选 `go` 引擎（可含多个 `.go` 文件），或用 MCP 的插件开发工具让 Agent 帮你写、改、测。
+完整规范见 [docs/PLUGINS.md](docs/PLUGINS.md) 与应用内「插件开发文档」。
+插件市场直接对接本仓库的 `marketplace.json`，把文件夹放进 `marketplace/` 并登记索引，push 即上架。
+
+**Go 插件在 NAS 上提示「没有 Go 工具链」？**
+正常。两条路：① 改用 `declarative` 引擎，零编译；② 在开发机 `go build -o bin/<id> .` 后只上传编译产物。
+主程序用独立子进程 + stdin/stdout JSON 行协议调用插件，不依赖主程序的 Go 版本。
 
 **同一个链接提交两次会怎样？**
 会**直接拦截**，不创建第二条任务，接口返回 `409` 并带 `{"duplicate":true,"reason":"url"}`。

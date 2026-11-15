@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"mediasuper/internal/engine"
+	"mediasuper/internal/plugin"
 	"mediasuper/internal/server"
 	"mediasuper/internal/updater"
 	"mediasuper/internal/version"
@@ -116,7 +117,19 @@ func Run(opt Options) error {
 	defer m.Broadcast("shutdown", map[string]any{"ok": true})
 
 	up := updater.New(opt.DataDir, version.Repo)
-	srv := server.NewServer(m, server.NewAuth(apiKey, passHash, secret), server.LoadWebAssets(web.FS), up)
+
+	// 插件系统：注册内置公众号插件，扫描 <data>/plugins 目录。
+	// 初始化失败不阻断下载主流程（/api/parse 会回退到内置解析器）。
+	plugin.RegisterWechatBuiltin()
+	pm, err := plugin.NewManager(opt.DataDir)
+	if err != nil {
+		log.Printf("⚠ 插件系统初始化失败，链接解析回退到内置实现: %v", err)
+		pm = nil
+	} else {
+		log.Printf("  插件    %d 个（目录 %s）", len(pm.List()), pm.PluginsDir())
+	}
+
+	srv := server.NewServer(m, server.NewAuth(apiKey, passHash, secret), server.LoadWebAssets(web.FS), up, pm)
 	if !opt.DisableUpdateCheck {
 		srv.StartAutoUpdate()
 	}

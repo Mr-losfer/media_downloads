@@ -1,0 +1,108 @@
+{
+  "id": "json_api_parser",
+  "name": "通用 JSON 解析接口",
+  "version": "1.0.2",
+  "author": "Media Super",
+  "description": "对接任意返回 JSON 的自建解析服务，字段映射 + 数组展开，装上填接口地址即可用。",
+  "homepage": "https://github.com/Mr-losfer/media_downloads",
+  "engine": "declarative",
+  "tags": ["通用", "模板", "零编译"],
+  "min_app_version": "2.5.9",
+  "match": {
+    "domains": ["example.com"],
+    "schemes": ["http", "https"],
+    "priority": 0
+  },
+  "capabilities": { "parse": true, "configurable": true },
+  "config_schema": [
+    {
+      "key": "api_base",
+      "label": "解析接口地址",
+      "type": "url",
+      "required": true,
+      "default": "https://example.com/api/parse",
+      "desc": "GET 接口，接受 url 参数。",
+      "group": "接口"
+    },
+    {
+      "key": "api_token",
+      "label": "接口 Token",
+      "type": "password",
+      "default": "",
+      "desc": "可选，写入 Authorization 头。",
+      "group": "接口"
+    },
+    {
+      "key": "timeout_sec",
+      "label": "请求超时提示（秒）",
+      "type": "number",
+      "default": 15,
+      "min": 3,
+      "max": 60,
+      "desc": "用来在说明里提示超时；实际超时在 declarative.request.timeout_sec 设置。",
+      "group": "接口"
+    },
+    {
+      "key": "auto_download",
+      "label": "解析后自动下载",
+      "type": "switch",
+      "default": false,
+      "group": "行为"
+    },
+    {
+      "key": "quality",
+      "label": "首选清晰度",
+      "type": "select",
+      "default": "best",
+      "options": [
+        { "label": "最高", "value": "best" },
+        { "label": "最低", "value": "worst" },
+        { "label": "跟随接口", "value": "auto" }
+      ],
+      "desc": "演示 select 控件；可写在请求模板里 {{config.quality}}。",
+      "group": "行为"
+    }
+  ],
+  "declarative": {
+    "request": {
+      "method": "GET",
+      "url": "{{config.api_base}}",
+      "query": {
+        "url": "{{source_url}}",
+        "quality": "{{config.quality}}"
+      },
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "{{config.api_token}}"
+      },
+      "timeout_sec": 15
+    },
+    "response": {
+      "format": "json",
+      "success_when": "code == 0",
+      "error_field": "message",
+      "fields": {
+        "title": "data.title",
+        "cover": "data.cover",
+        "author": "data.author",
+        "description": "data.description",
+        "publish_time": "data.publish_time",
+        "content": "data.content",
+        "images": "data.images"
+      },
+      "items": {
+        "from": "data.list",
+        "url": "{{item.url}}",
+        "title": "{{item.title}}",
+        "cover": "{{item.cover}}",
+        "page": "{{source_url}}",
+        "id": "{{item.id}}",
+        "kind": "video",
+        "format": "mp4",
+        "headers": { "Referer": "{{source_url}}" },
+        "max": 100
+      }
+    }
+  },
+  "changelog": "1.0.2 补充 select 配置项与数组对象模板示例。"
+}

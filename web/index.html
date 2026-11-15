@@ -76,9 +76,9 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M4 12h10M4 18h7"/><path d="M18 9v8m0 0l-2.6-2.6M18 17l2.6-2.6"/></svg>
       <span>任务</span>
     </a>
-    <a href="#/docs/api" data-view="docs">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M8 8h7M8 12h5"/></svg>
-      <span>文档</span>
+    <a href="#/plugins" data-view="plugins">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 3.5h5v3.2a1.8 1.8 0 0 0 3.6 0V3.5h2.4v5a2.4 2.4 0 0 1-4.8 0"/><path d="M3.5 9.5h5v3.2a1.8 1.8 0 0 0 3.6 0V9.5h2.4"/><path d="M3.5 3.5h2.4v5a2.4 2.4 0 0 1-4.8 0v-1.6"/><path d="M9.5 20.5h5v-5.2a1.8 1.8 0 0 1 3.6 0v1.2h2.4"/><path d="M3.5 14.5h5v3.2a1.8 1.8 0 0 0 3.6 0"/></svg>
+      <span>插件</span>
     </a>
     <a href="#/settings" data-view="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M20.5 14.2a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.06a1.6 1.6 0 0 0-1.05-1.47 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.06a1.6 1.6 0 0 0 1.47-1.05 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32h.08A1.6 1.6 0 0 0 9.94 3V3a2 2 0 1 1 4 0v.06a1.6 1.6 0 0 0 .97 1.47 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77v.08a1.6 1.6 0 0 0 1.47.97H21a2 2 0 1 1 0 4h-.06a1.6 1.6 0 0 0-1.44 1.08z"/></svg>
@@ -165,11 +165,65 @@
     </section>
 
     <!-- ---------------- 文档 ---------------- -->
+    <!-- ---------------- 插件 ---------------- -->
+    <section id="viewPlugins" class="hidden">
+      <h1 class="page-title">插件</h1>
+      <div class="toolbar">
+        <div class="segmented" role="group" aria-label="插件分类">
+          <button type="button" data-plug="installed" aria-pressed="true">已安装</button>
+          <button type="button" data-plug="market" aria-pressed="false">插件市场</button>
+        </div>
+      </div>
+
+      <div class="plug-intro panel">
+        <div class="plug-intro-txt">
+          <h3>文件夹即插件</h3>
+          <p>每个插件是独立文件夹：<code>plugin.json</code> 声明匹配域名、可视化配置项与执行规则，
+             Go 插件还可以带多个 <code>.go</code> 源码文件。首页提交匹配域名的链接时自动运行，
+             解析结果里的视频直接进下载队列。内置「微信公众号解析」也已纳入插件体系。</p>
+        </div>
+        <a class="btn ghost plug-doc-link" href="#/docs/plugins" data-view="docs">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M8 8h7M8 12h5"/></svg>
+          插件开发文档
+        </a>
+      </div>
+
+      <!-- 已安装 -->
+      <div id="plugInstalled">
+        <div class="plug-actions">
+          <button class="btn primary" type="button" id="btnPlugUpload">上传插件</button>
+          <button class="btn ghost" type="button" id="btnPlugUploadDir">上传文件夹</button>
+          <button class="btn ghost" type="button" id="btnPlugCreate">新建插件</button>
+          <button class="btn ghost" type="button" id="btnPlugReload">重载</button>
+          <input type="file" id="plugFileZip" accept=".zip,application/zip" hidden>
+          <input type="file" id="plugFileDir" webkitdirectory directory multiple hidden>
+          <span class="spacer"></span>
+          <a class="plug-mini-doc" href="#/docs/api" data-view="docs">REST API 文档</a>
+        </div>
+        <div id="plugWarn" class="plug-warn hidden"></div>
+        <div id="plugList" class="plug-list"></div>
+      </div>
+
+      <!-- 插件市场 -->
+      <div id="plugMarket" class="hidden">
+        <div class="plug-actions">
+          <button class="btn primary" type="button" id="btnMarketRefresh">刷新市场</button>
+          <button class="btn ghost" type="button" id="btnMarketConfig">市场源设置</button>
+          <span class="spacer"></span>
+          <a class="plug-mini-doc" href="#/docs/plugins#market" data-view="docs">如何上架</a>
+        </div>
+        <div id="marketMeta" class="market-meta"></div>
+        <div id="marketList" class="plug-list"></div>
+      </div>
+    </section>
+
+    <!-- ---------------- 文档 ---------------- -->
     <section id="viewDocs" class="hidden">
       <h1 class="page-title">文档</h1>
       <div class="toolbar">
         <div class="segmented" role="group" aria-label="文档类型">
           <button type="button" data-doc="api" aria-pressed="true">REST API</button>
+          <button type="button" data-doc="plugins" aria-pressed="false">插件开发</button>
           <button type="button" data-doc="mcp" aria-pressed="false">MCP 服务</button>
         </div>
       </div>
@@ -193,15 +247,76 @@
         </div>
 
         <div class="doc-section">
+          <h3>通用约定与提交示例</h3>
+          <p>全部接口均以 <code>application/json; charset=utf-8</code> 收发，路径参数写在 URL 里，
+             请求体为单个 JSON 对象。除 <code>/api/health</code> 外都需要鉴权，三种等价方式：</p>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre># ① Bearer（脚本 / 第三方集成推荐）
+curl -H "Authorization: Bearer $VF_KEY" "<span data-base>/api/tasks</span>"
+
+# ② 登录 Cookie（浏览器自动带）
+curl -b "ms_session=..." "<span data-base>/api/tasks</span>"
+
+# ③ query token（只给播放 / SSE / 下载类接口用，方便塞进 &lt;video&gt; 或 EventSource）
+curl "<span data-base>/api/tasks/&lt;id&gt;/stream?token=$VF_KEY</span>"</pre></div>
+          <div class="note">API Key 在「设置 → 安全」里查看与重置，形如 <code>ms_xxxxxxxx</code>。
+            <b>统一错误格式</b>：<code>{"error":"中文说明"}</code>；成功按接口返回对象或数组。
+            所有写接口都是幂等程度不同，请以返回的 <code>ok</code> / 任务对象为准，不要只看 HTTP 码。</div>
+
+          <h4 style="margin:18px 0 8px;font-size:13.5px">提交下载：完整示例与响应</h4>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>curl -X POST "<span data-base>/api/tasks</span>" \
+  -H "Authorization: Bearer $VF_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/hls/index.m3u8",
+    "title": "我的视频",
+    "save_dir": "/downloads/hdd",
+    "headers": { "Referer": "https://example.com/", "Cookie": "sid=abc" },
+    "trim_enabled": false
+  }'
+
+# 201 Created
+{
+  "id": "t_7f3a2b1c",
+  "url": "https://example.com/hls/index.m3u8",
+  "title": "我的视频",
+  "status": "queued",
+  "progress": 0,
+  "kind": "hls",
+  "format": "mp4",
+  "save_dir": "/downloads/hdd",
+  "created_at": "2026-11-15T10:00:00Z"
+}
+
+# 409 Conflict（链接防重命中，直接拦截，不创建任务）
+{
+  "error": "已拦截重复下载：该链接已存在下载任务",
+  "duplicate": true,
+  "reason": "url",              // 或 "title"（开启标题防重后）
+  "task_id": "t_7f3a2b1c"
+}</pre></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>请求字段</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">url</td><td>string</td><td>是</td><td>http/https 直链：m3u8 / mp4 / flv / ts 等；也可先走 <code>/api/parse</code> 解析成多条直链</td></tr>
+              <tr><td class="mono">title</td><td>string</td><td>否</td><td>保存文件名，<b>不要写扩展名</b>，服务端按探测到的容器自动补</td></tr>
+              <tr><td class="mono">save_dir</td><td>string</td><td>否</td><td>必须是「设置 → 存储」里配置过的目录，留空用默认目录</td></tr>
+              <tr><td class="mono">headers</td><td>object</td><td>否</td><td>防盗链请求头，键值对字符串</td></tr>
+            </tbody>
+          </table></div>
+          <div class="note"><b>批量提交</b>：公众号解析等场景会一次拿到多个 item，前端对每条各发一次 <code>POST /api/tasks</code>；
+            重复项返回 409 时会被统计为「跳过 N 个重复」，其余照常入队，不会互相阻塞。</div>
+        </div>
+
+        <div class="doc-section">
           <h3>链接解析（插件化）</h3>
           <p>首页粘贴 <code>https://mp.weixin.qq.com/s/…</code> 时，会先交给解析插件：展示文章标题、封面、作者、简介、
              发布时间、图片与正文摘要，并把解析出的视频直链列成可勾选的下载对象（一般是 mp4，<b>无需 ffmpeg 合成</b>）。
              普通直链不受影响，仍按原流程直接下载。</p>
           <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre># 列出已注册的解析插件
-curl "<span data-base>/api/parsers" -H "Authorization: Bearer $VF_KEY"
+curl "<span data-base>/api/parsers</span>" -H "Authorization: Bearer $VF_KEY"
 
 # 统一解析入口：未命中 {"matched":false}，命中返回 result
-curl -X POST "<span data-base>/api/parse" \
+curl -X POST "<span data-base>/api/parse</span>" \
   -H "Authorization: Bearer $VF_KEY" \
   -H "Content-Type: application/json" \
   -d '{"url":"https://mp.weixin.qq.com/s/epF_Tih8U0wNUUazf0TrsA"}'</pre></div>
@@ -231,31 +346,96 @@ curl -X POST "<span data-base>/api/parse" \
         <div class="doc-section">
           <h3>查询与操作</h3>
           <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre># 列表（status=queued|running|merging|completed|failed|canceled|active）
-curl "<span data-base>/api/tasks?status=active&amp;limit=50" -H "Authorization: Bearer $VF_KEY"
+curl "<span data-base>/api/tasks?status=active&amp;limit=50</span>" -H "Authorization: Bearer $VF_KEY"
 
 # 单个任务
-curl "<span data-base>/api/tasks/&lt;id&gt;" -H "Authorization: Bearer $VF_KEY"
+curl "<span data-base>/api/tasks/&lt;id&gt;</span>" -H "Authorization: Bearer $VF_KEY"
 
 # 改名
-curl -X PATCH "<span data-base>/api/tasks/&lt;id&gt;" \
+curl -X PATCH "<span data-base>/api/tasks/&lt;id&gt;</span>" \
   -H "Authorization: Bearer $VF_KEY" -H "Content-Type: application/json" \
   -d '{"title":"新名字"}'
 
 # 取消 / 重试
-curl -X POST "<span data-base>/api/tasks/&lt;id&gt;/cancel" -H "Authorization: Bearer $VF_KEY"
-curl -X POST "<span data-base>/api/tasks/&lt;id&gt;/retry"  -H "Authorization: Bearer $VF_KEY"
+curl -X POST "<span data-base>/api/tasks/&lt;id&gt;/cancel</span>" -H "Authorization: Bearer $VF_KEY"
+curl -X POST "<span data-base>/api/tasks/&lt;id&gt;/retry</span>"  -H "Authorization: Bearer $VF_KEY"
 
 # 删除（file=true 同时删文件）
-curl -X DELETE "<span data-base>/api/tasks/&lt;id&gt;?file=true" -H "Authorization: Bearer $VF_KEY"</pre></div>
+curl -X DELETE "<span data-base>/api/tasks/&lt;id&gt;?file=true</span>" -H "Authorization: Bearer $VF_KEY"</pre></div>
+        </div>
+
+        <div class="doc-section">
+          <h3>插件管理 API</h3>
+          <p>插件页的所有操作都有对应 REST 接口，方便脚本化开发、CI 校验与第三方集成。
+             <code>{id}</code> 是 <code>plugin.json</code> 里的 <code>id</code>，也是插件文件夹名。</p>
+          <div class="table-wrap"><table>
+            <thead><tr><th>方法</th><th>路径</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td><span class="m get">GET</span></td><td class="mono">/api/plugins</td><td>插件列表（含 config_schema、配置值、文件清单、warnings）</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins</td><td>新建脚手架（或传 <code>bundle</code> 内联导入）</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins/upload</td><td>上传 zip（multipart file / raw zip / JSON files）</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins/validate</td><td>只校验 plugin.json，不安装</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins/reload</td><td>重新扫描目录、重载全部插件</td></tr>
+              <tr><td><span class="m get">GET</span></td><td class="mono">/api/plugins/{id}</td><td>单个插件完整信息</td></tr>
+              <tr><td><span class="m">PUT</span></td><td class="mono">/api/plugins/{id}</td><td>覆盖 plugin.json（可包在 <code>manifest</code> 里）</td></tr>
+              <tr><td><span class="m del">DELETE</span></td><td class="mono">/api/plugins/{id}</td><td>删除插件（内置禁止）</td></tr>
+              <tr><td><span class="m get">GET</span></td><td class="mono">/api/plugins/{id}/config</td><td>读 config_schema 与当前配置值</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins/{id}/config</td><td>保存配置值（支持 <code>{"config":{...}}</code> 或直接对象）</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins/{id}/toggle</td><td>启停，<code>{"enabled":true}</code>，不传则取反</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins/{id}/copy</td><td>另存为新插件（内置会自动转 declarative 模板）</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins/{id}/test</td><td>样例链接跑一次，返回 result + trace</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins/{id}/debug</td><td>调试运行（含请求/响应片段、日志、耗时）</td></tr>
+              <tr><td><span class="m get">GET</span></td><td class="mono">/api/plugins/{id}/files</td><td>文件清单</td></tr>
+              <tr><td><span class="m get">GET</span></td><td class="mono">/api/plugins/{id}/file?path=</td><td>读文件内容（text/plain）</td></tr>
+              <tr><td><span class="m">PUT</span></td><td class="mono">/api/plugins/{id}/file</td><td>写文件 <code>{"path":"main.go","content":"..."}</code></td></tr>
+              <tr><td><span class="m del">DELETE</span></td><td class="mono">/api/plugins/{id}/file?path=</td><td>删文件</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins/{id}/patch</td><td>差量修改 <code>{"ops":[...]}</code></td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins/{id}/build</td><td>编译 Go 插件</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins/{id}/reload</td><td>重载单个（实际全局重载）</td></tr>
+              <tr><td><span class="m get">GET</span></td><td class="mono">/api/plugins/{id}/export</td><td>导出 zip（不含编译产物）</td></tr>
+              <tr><td><span class="m get">GET</span></td><td class="mono">/api/marketplace</td><td>市场列表（<code>?force=1</code> 跳过缓存）</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/marketplace/refresh</td><td>强制刷新市场</td></tr>
+              <tr><td><span class="m">POST</span></td><td class="mono">/api/marketplace/install</td><td>安装 / 更新 <code>{"id":"..."}</code></td></tr>
+              <tr><td><span class="m get">GET</span></td><td class="mono">/api/marketplace/config</td><td>读市场源配置</td></tr>
+              <tr><td><span class="m">PUT</span></td><td class="mono">/api/marketplace/config</td><td>改市场地址 / 代理 / 缓存</td></tr>
+            </tbody>
+          </table></div>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre># 新建 declarative 插件
+curl -X POST "<span data-base>/api/plugins</span>" -H "Authorization: Bearer $VF_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"my_site","name":"我的站点","engine":"declarative","domains":["example.com"]}'
+
+# 保存可视化配置
+curl -X POST "<span data-base>/api/plugins/my_site/config</span>" -H "Authorization: Bearer $VF_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"config":{"api_base":"https://example.com/api/parse","auto_download":true}}'
+
+# 差量修改代码（把某段字符串替换掉）
+curl -X POST "<span data-base>/api/plugins/my_site/patch</span>" -H "Authorization: Bearer $VF_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"ops":[{"path":"plugin.json","action":"replace",
+               "find":"\"priority\": 0","replace":"\"priority\": 5"}]}'
+
+# 用样例链接测试
+curl -X POST "<span data-base>/api/plugins/my_site/test</span>" -H "Authorization: Bearer $VF_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com/video/123"}'
+
+# 从市场安装
+curl -X POST "<span data-base>/api/marketplace/install</span>" -H "Authorization: Bearer $VF_KEY" \
+  -H "Content-Type: application/json" -d '{"id":"json_api_parser"}'</pre></div>
+          <div class="note"><code>/test</code> 与 <code>/debug</code> 返回 <code>{ok, result, trace}</code>；
+             <code>trace.steps</code> 是执行步骤，<code>trace.logs</code> 是插件 stderr，
+             <code>trace.request / response</code> 只有 debug 模式才有。失败时 HTTP 502 且带 <code>trace</code>，方便定位。</div>
         </div>
 
         <div class="doc-section">
           <h3>在线播放</h3>
-          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>&lt;video controls src="<span data-base>/api/tasks/&lt;id&gt;/stream?token=$VF_KEY"&gt;&lt;/video&gt;
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>&lt;video controls src="<span data-base>/api/tasks/&lt;id&gt;/stream?token=$VF_KEY</span>"&gt;&lt;/video&gt;
 
 # 支持 HTTP Range（拖动进度条 / 断点续传）
-curl -H "Range: bytes=0-1023" "<span data-base>/api/tasks/&lt;id&gt;/stream?token=$VF_KEY" -o /tmp/head.bin
-curl "<span data-base>/api/tasks/&lt;id&gt;/download?token=$VF_KEY" -O -J</pre></div>
+curl -H "Range: bytes=0-1023" "<span data-base>/api/tasks/&lt;id&gt;/stream?token=$VF_KEY</span>" -o /tmp/head.bin
+curl "<span data-base>/api/tasks/&lt;id&gt;/download?token=$VF_KEY</span>" -O -J</pre></div>
         </div>
 
         <div class="doc-section">
@@ -289,7 +469,13 @@ curl "<span data-base>/api/tasks/&lt;id&gt;/download?token=$VF_KEY" -O -J</pre><
                 <tr><td><span class="m get">GET</span></td><td class="mono">/api/system/update</td><td>检查更新（<code>?force=1</code> 跳过缓存）</td></tr>
                 <tr><td><span class="m">POST</span></td><td class="mono">/api/system/update</td><td>一键更新并重启</td></tr>
                 <tr><td><span class="m">POST</span></td><td class="mono">/api/system/password</td><td>修改管理员密码</td></tr>
-                <tr><td><span class="m">POST</span></td><td class="mono">/mcp</td><td>MCP JSON-RPC 端点</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/system/ffmpeg</td><td>安装 / 补齐 ffmpeg 组件</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/plugins</td><td>插件列表（详见「插件管理 API」）</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/plugins</td><td>新建 / 导入插件</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/plugins/{id}</td><td>插件详情、配置、文件、测试、编译、导出</td></tr>
+                <tr><td><span class="m get">GET</span></td><td class="mono">/api/marketplace</td><td>在线插件市场列表</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/api/marketplace/install</td><td>从市场安装 / 更新插件</td></tr>
+                <tr><td><span class="m">POST</span></td><td class="mono">/mcp</td><td>MCP JSON-RPC 端点（36 个工具）</td></tr>
               </tbody>
             </table>
           </div>
@@ -297,7 +483,7 @@ curl "<span data-base>/api/tasks/&lt;id&gt;/download?token=$VF_KEY" -O -J</pre><
 
         <div class="doc-section">
           <h3>实时事件（SSE）</h3>
-          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>curl -N "<span data-base>/api/events?token=$VF_KEY"
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>curl -N "<span data-base>/api/events?token=$VF_KEY</span>"
 
 event: hello     {"version":"1.0.0"}
 event: snapshot  [ …任务数组… ]
@@ -315,14 +501,295 @@ event: task.deleted {"id":"…"}
             <table>
               <thead><tr><th>状态码</th><th>含义</th><th>处理方式</th></tr></thead>
               <tbody>
-                <tr><td class="mono">400</td><td>参数不合法</td><td>看 <code>error</code> 字段，多为 URL 或目录不在允许列表</td></tr>
+                <tr><td class="mono">201</td><td>创建成功</td><td>提交任务 / 新建插件 / 市场安装</td></tr>
+                <tr><td class="mono">400</td><td>参数不合法</td><td>看 <code>error</code> 字段，多为 URL、目录或 plugin.json 校验失败</td></tr>
                 <tr><td class="mono">401</td><td>未授权</td><td>检查 API Key，或重新登录</td></tr>
-                <tr><td class="mono">404</td><td>任务 / 文件不存在</td><td>可能已被删除</td></tr>
-                <tr><td class="mono">409</td><td>文件尚未就绪</td><td>任务还没 completed，稍后再取</td></tr>
+                <tr><td class="mono">404</td><td>任务 / 插件 / 文件不存在</td><td>可能已被删除</td></tr>
+                <tr><td class="mono">409</td><td>冲突</td><td><b>重复下载拦截</b>（<code>duplicate:true, reason:url|title, task_id</code>）或文件尚未就绪</td></tr>
+                <tr><td class="mono">415</td><td>Content-Type 不支持</td><td>MCP 端点要求 <code>application/json</code></td></tr>
                 <tr><td class="mono">429</td><td>登录尝试过多</td><td>等 5 分钟再试</td></tr>
+                <tr><td class="mono">502</td><td>上游失败</td><td>插件解析失败 / 市场下载失败，响应里带 <code>trace</code></td></tr>
+                <tr><td class="mono">503</td><td>服务未就绪</td><td>插件系统未初始化</td></tr>
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- ===== 插件开发 ===== -->
+      <div id="docPlugins" class="hidden">
+        <div class="doc-head">
+          <h2>插件开发文档</h2>
+          <p>Media Super 的解析能力完全插件化。<b>一个插件 = 一个文件夹 + 一份 <code>plugin.json</code></b>，
+             Go 插件可以包含多个主要代码文件。插件自己声明「匹配哪些域名」「需要用户填哪些配置」，
+             主程序在首页提交链接时按域名自动挑选插件运行，产出统一结果后把视频交给下载引擎。</p>
+        </div>
+
+        <div class="doc-section">
+          <h3>1. 三种引擎，先选一种</h3>
+          <div class="table-wrap"><table>
+            <thead><tr><th>引擎</th><th>要不要写代码</th><th>要不要编译</th><th>适用场景</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">declarative</td><td>不写，只写规则</td><td><b>零编译</b>，上传即用</td><td>绝大多数「调一个 JSON 接口拿直链」的站点，<b>推荐</b></td></tr>
+              <tr><td class="mono">go</td><td>写 Go（可多文件）</td><td>需要编译成可执行文件</td><td>需要签名计算、抓 HTML、复杂逻辑、自定义协议</td></tr>
+              <tr><td class="mono">builtin</td><td>编译进主程序</td><td>随主程序发布</td><td>官方内置（当前仅「微信公众号解析」）</td></tr>
+            </tbody>
+          </table></div>
+          <div class="note"><b>为什么 Go 插件不用 .so？</b> Go 的 <code>plugin</code> 包要求主程序与插件的 Go 版本、依赖版本完全一致，
+            NAS 上还分 x86 / arm，用户上传源码无法直接加载。Media Super 采用<b>独立可执行文件 + stdin/stdout JSON 行协议</b>
+            （Hashicorp go-plugin 思路）：跨版本、跨架构、可沙箱、崩溃不影响主服务。NAS 没装 Go 时可在开发机编译好只上传 <code>bin/</code>，
+            或者直接改用 declarative 引擎。</div>
+        </div>
+
+        <div class="doc-section">
+          <h3>2. 目录结构</h3>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>&lt;数据目录&gt;/plugins/
+  _state.json              运行期状态（启停 / 配置值 / 来源），自动生成，不要提交
+  _market.json             市场源配置，自动生成
+  my_site/                 ← 一个插件就是一个文件夹
+    plugin.json            ← 必需，唯一权威元数据
+    main.go                Go 引擎：SDK 协议入口
+    parse.go               Go 引擎：业务逻辑（可拆任意多个 .go 文件）
+    go.mod                 Go 引擎：模块文件（只用标准库即可）
+    README.md              说明文档
+    icon.png               可选图标
+    bin/my_site            编译产物（不导出、不入库）</pre></div>
+          <div class="note">插件目录里的文件可以用插件页「文件」按钮在线编辑，也可以用 MCP 的
+            <code>plugin_write_file</code> / <code>plugin_patch</code> 差量修改。
+            <code>_state.json</code> 集中保存启用状态与配置值，<b>不写进插件目录</b>，所以插件文件夹可以原样提交 Git、导出给别的机器。</div>
+        </div>
+
+        <div class="doc-section">
+          <h3>3. plugin.json 全字段</h3>
+          <div class="table-wrap"><table>
+            <thead><tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">id</td><td>string</td><td>是</td><td>2–48 位，小写字母开头，只含 <code>a-z 0-9 _ -</code>。<b>必须与文件夹同名</b>，全局唯一</td></tr>
+              <tr><td class="mono">name</td><td>string</td><td>是</td><td>插件列表里显示的名称</td></tr>
+              <tr><td class="mono">version</td><td>string</td><td>是</td><td>语义化版本，如 <code>1.0.0</code>；市场用它判断可更新</td></tr>
+              <tr><td class="mono">engine</td><td>string</td><td>是</td><td><code>declarative</code> / <code>go</code> / <code>builtin</code></td></tr>
+              <tr><td class="mono">description / author / homepage / tags / changelog</td><td>string / array</td><td>否</td><td>展示用元信息；<code>tags</code> 是字符串数组</td></tr>
+              <tr><td class="mono">icon</td><td>string</td><td>否</td><td>相对插件目录的图标路径</td></tr>
+              <tr><td class="mono">match</td><td>object</td><td>否</td><td><b>决定提交哪种链接时运行本插件</b>，详见第 4 节</td></tr>
+              <tr><td class="mono">config_schema</td><td>array</td><td>否</td><td><b>用户可视化配置选项</b>，非空时列表自动出现「配置」按钮，详见第 5 节</td></tr>
+              <tr><td class="mono">capabilities</td><td>object</td><td>否</td><td><code>{ "parse": true, "configurable": true }</code>；无 parse 能力的插件不参与链接解析</td></tr>
+              <tr><td class="mono">declarative</td><td>object</td><td>engine=declarative 时必填</td><td>HTTP 请求 + 响应字段映射规则，详见第 6 节</td></tr>
+              <tr><td class="mono">entry</td><td>object</td><td>否</td><td>Go 引擎：<code>sources</code>（参与编译的 .go 文件，留空则自动扫描）、<code>binary</code>（产物相对路径，默认 <code>bin/&lt;id&gt;</code>）</td></tr>
+              <tr><td class="mono">min_app_version</td><td>string</td><td>否</td><td>要求的最低 Media Super 版本，仅作说明</td></tr>
+              <tr><td class="mono">builtin</td><td>bool</td><td>否</td><td>内置插件标记，禁止删除；第三方插件不要写</td></tr>
+            </tbody>
+          </table></div>
+          <div class="note">上传 / 保存前会做严格校验：JSON 里出现未知字段、id 格式错、engine 不认识、正则写错、
+            <code>select</code> 缺 <code>options</code> 等都会给出具体中文错误，不会静默装上坏插件。</div>
+        </div>
+
+        <div class="doc-section">
+          <h3>4. match：发现哪一种域名时运行</h3>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>"match": {
+  "domains": ["mp.weixin.qq.com", "*.example.com"],
+  "url_patterns": ["^https://example\\.com/video/\\d+$"],
+  "path_prefixes": ["/s", "/video"],
+  "schemes": ["https"],
+  "extensions": [".m3u8", ".mp4"],
+  "priority": 10
+}</pre></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>字段</th><th>含义</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">domains</td><td>精确域名或 <code>*.example.com</code> 通配（同时匹配裸域与子域）。内部是「或」</td></tr>
+              <tr><td class="mono">url_patterns</td><td>Go 正则，匹配整条 URL；写了它就必须至少命中一条</td></tr>
+              <tr><td class="mono">path_prefixes</td><td>URL 路径前缀，如 <code>/s</code>、<code>/video</code></td></tr>
+              <tr><td class="mono">schemes</td><td>允许的协议，留空 = http/https 都行</td></tr>
+              <tr><td class="mono">extensions</td><td>允许的扩展名（带点、小写），用于只接管直链</td></tr>
+              <tr><td class="mono">priority</td><td>数值越大越先匹配，默认 0。多个插件都能命中时只运行第一个</td></tr>
+            </tbody>
+          </table></div>
+          <div class="note">各字段之间是「与」关系；<b>整条 match 为空的插件不会自动接管任何链接</b>，
+            但仍可用「测试」按钮或 MCP <code>plugin_test</code> 显式调用，适合做工具型插件。
+            内置公众号插件优先展示配置项，验证时可把它的开关关掉再测同域名插件。</div>
+        </div>
+
+        <div class="doc-section">
+          <h3>5. config_schema：代码中定义的可视化配置</h3>
+          <p>每写一项，插件列表就多一个「配置」按钮；点击弹窗按 <code>type</code> 渲染控件，保存后写入 <code>_state.json</code>。</p>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>"config_schema": [
+  { "key": "api_base", "label": "解析接口", "type": "url", "required": true,
+    "default": "https://example.com/api/parse", "desc": "GET 接口，接受 url 参数", "group": "接口" },
+  { "key": "api_token", "label": "Token", "type": "password", "default": "", "group": "接口" },
+  { "key": "timeout_sec", "label": "超时（秒）", "type": "number",
+    "default": 15, "min": 3, "max": 60, "group": "接口" },
+  { "key": "quality", "label": "清晰度", "type": "select", "default": "best",
+    "options": [{"label":"最高","value":"best"},{"label":"最低","value":"worst"}] },
+  { "key": "auto_download", "label": "解析后自动下载", "type": "switch", "default": false },
+  { "key": "extra_headers", "label": "附加请求头", "type": "textarea", "default": "" }
+]</pre></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>type</th><th>控件</th><th>可用属性</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">text</td><td>单行文本</td><td rowspan="7" style="vertical-align:top"><code>key</code>（必填、唯一）<br><code>label</code> 显示名<br><code>desc</code> 帮助文字<br><code>default</code> 默认值<br><code>required</code> 必填校验<br><code>placeholder</code><br><code>group</code> 分组标题<br><code>min / max</code> 数字范围<br><code>options</code> select 选项</td></tr>
+              <tr><td class="mono">password</td><td>密码框（不回显）</td></tr>
+              <tr><td class="mono">number</td><td>数字输入（带 min/max 校验）</td></tr>
+              <tr><td class="mono">switch</td><td>开关</td></tr>
+              <tr><td class="mono">select</td><td>下拉选择（必须给 options）</td></tr>
+              <tr><td class="mono">textarea</td><td>多行文本</td></tr>
+              <tr><td class="mono">url</td><td>地址输入（校验 http/https）</td></tr>
+            </tbody>
+          </table></div>
+          <div class="note"><b>注入方式</b>：声明式规则里写 <code>{{config.api_base}}</code>，Go 插件里从 stdin 的
+            <code>config</code> 对象读。约定键 <code>auto_download: true</code> 会让前端解析卡片自动把全部视频加入下载队列。
+            新增配置项后重载会补默认值，已有用户值不会被覆盖。</div>
+        </div>
+
+        <div class="doc-section">
+          <h3>6. declarative 规则（零编译，推荐）</h3>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>"declarative": {
+  "request": {
+    "method": "GET",
+    "url": "{{config.api_base}}",
+    "query": { "url": "{{source_url}}", "quality": "{{config.quality}}" },
+    "headers": { "Accept": "application/json",
+                 "Authorization": "{{config.api_token}}" },
+    "body": "",
+    "timeout_sec": 15
+  },
+  "response": {
+    "format": "json",
+    "success_when": "code == 1",
+    "error_field": "msg",
+    "fields": {
+      "title": "data.title", "cover": "data.cover",
+      "author": "data.author", "description": "data.description",
+      "publish_time": "data.publish_time", "content": "data.content",
+      "source_url": "data.source_url", "images": "data.images"
+    },
+    "items": {
+      "from": "data.movie_down_url",
+      "url": "{{value}}",
+      "title": "{{title}} · {{index1}}",
+      "cover": "{{cover}}", "page": "{{source_url}}", "id": "{{item.id}}",
+      "kind": "video", "format": "mp4",
+      "headers": { "Referer": "https://mp.weixin.qq.com/" },
+      "max": 100
+    }
+  }
+}</pre></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>位置</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">request.method</td><td>GET（默认）或 POST</td></tr>
+              <tr><td class="mono">request.url / query / headers / body</td><td>全部支持 <code>{{...}}</code> 模板；空值头会自动跳过；body 非空时自动补 <code>Content-Type: application/json</code></td></tr>
+              <tr><td class="mono">request.timeout_sec</td><td>3–60 秒，默认 15；响应体上限 8 MB</td></tr>
+              <tr><td class="mono">response.success_when</td><td>简单断言，如 <code>code == 1</code>、<code>data.ok == true</code>、<code>errcode != 0</code>；失败时取 <code>error_field</code> 的点路径作为提示</td></tr>
+              <tr><td class="mono">response.fields</td><td>结果字段 → 响应点路径。可用键：<code>title / cover / author / description / publish_time / content / source_url / images / plugin_name</code>。<code>content</code> 会剥掉 HTML 标签压成摘要</td></tr>
+              <tr><td class="mono">response.items.from</td><td>数组所在点路径，如 <code>data.list</code>；也能直接放字符串数组</td></tr>
+              <tr><td class="mono">response.items.*</td><td>url / title / cover / page / id / headers 都支持模板；kind 默认 <code>video</code>，format 默认 <code>mp4</code>，max 默认 100</td></tr>
+            </tbody>
+          </table></div>
+          <div class="note"><b>点路径</b>支持 <code>data.title</code>、<code>data.list[0].url</code>。<br>
+            <b>模板变量</b>：<code>{{config.&lt;key&gt;}}</code>、<code>{{source_url}}</code>（或 <code>{{url}}</code>）、
+            <code>{{title}}</code>、<code>{{cover}}</code>、<code>{{value}}</code>（数组元素是字符串时）、
+            <code>{{item.url}}</code>（元素是对象时）、<code>{{index}}</code>（0 起）、<code>{{index1}}</code>（1 起）。
+            变量缺失时替换为空串，不会让整次解析崩掉。</div>
+        </div>
+
+        <div class="doc-section">
+          <h3>7. Go 插件 SDK 协议</h3>
+          <p>插件编译成独立可执行文件，主程序 <code>exec</code> 它并通过 stdin/stdout 传一行 JSON。只用标准库即可。</p>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>// stdin（一行）
+{"url":"https://site.com/page","config":{"api_base":"https://..."},"mode":"debug"}
+
+// stdout（最后一行，前面允许打日志）
+{"ok":true,"result":{"plugin":"my_site","plugin_name":"我的插件",
+  "source_url":"https://site.com/page","title":"标题","cover":"","author":"",
+  "description":"","publish_time":"","content_text":"","content_len":0,
+  "images":[],"items":[
+    {"url":"https://.../a.mp4","title":"第 1 集","kind":"video","format":"mp4",
+     "headers":{"Referer":"https://site.com/"}}
+  ],"extra":{}},"logs":["GET ..."]}
+
+// 失败
+{"ok":false,"error":"解析服务返回 HTTP 502","logs":[]}</pre></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>约定</th><th>要求</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">stdin</td><td>读一行 JSON：<code>url</code> 原始链接、<code>config</code> 配置值对象、<code>mode</code> = parse / debug</td></tr>
+              <tr><td class="mono">stdout</td><td><b>最后一行必须是 JSON</b>：<code>ok</code> + <code>result</code>，或 <code>ok:false</code> + <code>error</code>；可带 <code>logs</code></td></tr>
+              <tr><td class="mono">stderr</td><td>任意日志，<code>debug</code> 模式会回传到界面</td></tr>
+              <tr><td class="mono">超时</td><td>30 秒未退出判定失败；退出码非 0 也判定失败</td></tr>
+              <tr><td class="mono">多文件</td><td>全部放 <code>package main</code>，在 <code>entry.sources</code> 列出或留空自动扫描 <code>*.go</code></td></tr>
+            </tbody>
+          </table></div>
+          <div class="note">仓库 <code>marketplace/go_demo/</code> 是一份能直接编译运行的完整示例（<code>main.go</code> 管协议、<code>parse.go</code> 管业务）。
+            <b>没有 Go 工具链的设备</b>：在开发机 <code>go build</code> 后只把可执行文件放进 <code>bin/</code> 再上传，或改用 declarative 引擎。</div>
+        </div>
+
+        <div class="doc-section">
+          <h3>8. 开发全流程</h3>
+          <div class="table-wrap"><table>
+            <thead><tr><th>步骤</th><th>界面</th><th>REST</th><th>MCP 工具</th></tr></thead>
+            <tbody>
+              <tr><td>创建脚手架</td><td>新建插件</td><td><code>POST /api/plugins</code></td><td><code>plugin_create</code></td></tr>
+              <tr><td>写代码 / 改清单</td><td>文件 → 编辑</td><td><code>PUT /api/plugins/{id}/file</code></td><td><code>plugin_write_file</code>、<code>plugin_update_meta</code></td></tr>
+              <tr><td>差量修改</td><td>—</td><td><code>POST /api/plugins/{id}/patch</code></td><td><code>plugin_patch</code></td></tr>
+              <tr><td>保存 / 重载</td><td>重载</td><td><code>POST /api/plugins/reload</code></td><td><code>plugin_save</code></td></tr>
+              <tr><td>校验清单</td><td>保存时自动</td><td><code>POST /api/plugins/validate</code></td><td><code>plugin_validate</code></td></tr>
+              <tr><td>编译（仅 go）</td><td>编译</td><td><code>POST /api/plugins/{id}/build</code></td><td><code>plugin_build</code></td></tr>
+              <tr><td>测试 / 调试</td><td>测试 / 调试</td><td><code>POST /api/plugins/{id}/test</code> · <code>/debug</code></td><td><code>plugin_test</code>、<code>plugin_debug</code></td></tr>
+              <tr><td>配置</td><td>配置弹窗</td><td><code>POST /api/plugins/{id}/config</code></td><td><code>plugin_set_config</code></td></tr>
+              <tr><td>上传 / 导出</td><td>上传插件 / 导出</td><td><code>POST /api/plugins/upload</code> · <code>GET /api/plugins/{id}/export</code></td><td><code>plugin_upload</code>、<code>plugin_export</code></td></tr>
+              <tr><td>上架市场</td><td>—</td><td>提交 Git 并登记 marketplace.json</td><td><code>marketplace_list</code>、<code>marketplace_install</code></td></tr>
+            </tbody>
+          </table></div>
+          <div class="note"><code>plugin_patch</code> 支持 <code>replace</code>（find → replace）、<code>insert</code>（锚点后插入）、
+            <code>delete</code> 三种动作，<code>all:true</code> 处理全部匹配；<b>全部成功才一次性落盘</b>，任一失败整体回滚，不会产生半套代码。</div>
+        </div>
+
+        <div class="doc-section" id="market">
+          <h3>9. 在线插件市场（对接 Git）</h3>
+          <p>市场就是一个 Git 仓库：根目录放 <code>marketplace.json</code>，每个插件一个文件夹。
+             <b>git push 即上架</b>，不需要额外服务器。默认指向
+             <code>Mr-losfer/media_downloads</code> 的 <code>marketplace/</code> 目录，可在「市场源设置」里换成任意仓库直链。</p>
+          <div class="code"><button class="copy" data-copy aria-label="复制示例" title="复制"></button><pre>{
+  "schema_version": "1",
+  "name": "Media Super 官方插件市场",
+  "owner": "Mr-losfer",
+  "repo": "Mr-losfer/media_downloads",
+  "updated_at": "2026-11-15",
+  "base_url": "marketplace",       // 相对 marketplace.json 所在目录，也可写绝对 URL
+  "plugins": [
+    {
+      "id": "json_api_parser", "name": "通用 JSON 解析接口",
+      "version": "1.0.2", "description": "对接任意返回 JSON 的自建服务",
+      "author": "Media Super", "engine": "declarative",
+      "tags": ["通用", "模板"],
+      "path": "json_api_parser",   // 相对 base_url 的文件夹
+      "files": ["plugin.json", "README.md"],   // 文件夹内要下载的文件
+      "min_app_version": "2.5.9"
+    }
+  ]
+}</pre></div>
+          <p><b>上架步骤</b>：① 把插件整个文件夹放进仓库 <code>marketplace/&lt;id&gt;/</code>；
+             ② 在 <code>marketplace.json</code> 的 <code>plugins</code> 里加一条，列全 <code>files</code>；
+             ③ commit + push；④ 客户端点「刷新市场」即可看到，点安装会逐文件下载并落地到插件目录。</p>
+          <div class="note">国内 NAS 直连 <code>raw.githubusercontent.com</code> 常失败，客户端会<b>自动先走 gh-proxy 代理、再回退直连</b>；
+             市场地址、代理前缀、缓存时长都可在「市场源设置」里改。Go 插件的 <code>bin/</code> 编译产物不要提交，
+             安装后由用户自行编译或改上传已编译产物。</div>
+        </div>
+
+        <div class="doc-section">
+          <h3>10. 常见问题</h3>
+          <div class="table-wrap"><table>
+            <thead><tr><th>现象</th><th>原因与处理</th></tr></thead>
+            <tbody>
+              <tr><td>提交链接没走插件</td><td>检查 <code>match.domains</code> 是否写对、插件是否启用、是否有更高 <code>priority</code> 的插件抢先命中</td></tr>
+              <tr><td>提示「解析地址不合法」</td><td><code>{{config.api_base}}</code> 还没在配置弹窗里填，或填的不是 http(s)</td></tr>
+              <tr><td>解析成功但 0 个视频</td><td><code>items.from</code> 的点路径不对；用「调试」看返回体，或把 <code>from</code> 改成真实数组路径</td></tr>
+              <tr><td>提示「插件尚未编译」</td><td>engine=go 但缺 <code>bin/</code> 产物；点「编译」，或改 declarative</td></tr>
+              <tr><td>编译报「没有 Go 工具链」</td><td>NAS 上正常。开发机编译后上传产物，或改用 declarative 引擎</td></tr>
+              <tr><td>上传 zip 报缺少 plugin.json</td><td>zip 顶层多套了一层目录是允许的，但 <code>plugin.json</code> 必须在插件文件夹根部</td></tr>
+              <tr><td>改了 plugin.json 不生效</td><td>点「重载」；id 不能改（与目录名绑定），改 id 要新建插件</td></tr>
+            </tbody>
+          </table></div>
         </div>
       </div>
 
@@ -370,7 +837,9 @@ event: task.deleted {"id":"…"}
         </div>
 
         <div class="doc-section">
-          <h3>工具（11 个）</h3>
+          <h3>工具（36 个）</h3>
+          <p class="hint" style="margin:0 0 12px">基础 11 个（任务 / 配置 / 统计）+ 插件开发 25 个。
+             下列基础工具已在上表逐个列出参数；插件开发工具见文末汇总表。</p>
 
           <details class="tool">
             <summary><span class="tname">submit_download</span><span class="tdesc">提交下载任务</span></summary>
@@ -484,6 +953,46 @@ event: task.deleted {"id":"…"}
             <summary><span class="tname">get_stats</span><span class="tdesc">任务计数、磁盘剩余、运行时长</span></summary>
             <div class="tbody"><p class="hint" style="margin:0">无参数。</p></div>
           </details>
+        </div>
+
+        <div class="doc-section">
+          <h3>插件开发工具（25 个）</h3>
+          <p>让 Agent 完成插件开发全生命周期：创建 → 写代码 → 差量修改 → 保存 → 校验 → 编译 → 测试 / 调试 →
+             配置 → 上传 / 导出 → 上架市场。<code>tools/list</code> 会返回每个工具的完整 <code>inputSchema</code>。</p>
+          <div class="table-wrap"><table>
+            <thead><tr><th>工具</th><th>作用</th><th>主要参数</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">plugin_list</td><td>列出已安装插件与警告</td><td>无</td></tr>
+              <tr><td class="mono">plugin_get</td><td>读单个插件完整信息</td><td>id</td></tr>
+              <tr><td class="mono">plugin_create</td><td>生成脚手架（plugin.json / README / Go 源码）</td><td>id*, name*, engine, domains, config_schema</td></tr>
+              <tr><td class="mono">plugin_update_meta</td><td>编辑 plugin.json（整体或浅合并）</td><td>id*, manifest 或 set</td></tr>
+              <tr><td class="mono">plugin_files</td><td>列文件</td><td>id</td></tr>
+              <tr><td class="mono">plugin_read_file</td><td>读源码</td><td>id*, path*</td></tr>
+              <tr><td class="mono">plugin_write_file</td><td>写 / 追加文件</td><td>id*, path*, content*, append</td></tr>
+              <tr><td class="mono">plugin_delete_file</td><td>删文件</td><td>id*, path*</td></tr>
+              <tr><td class="mono">plugin_patch</td><td>差量修改（全部成功才落盘）</td><td>id*, ops*（path/action/find/replace/content/anchor/all）</td></tr>
+              <tr><td class="mono">plugin_save</td><td>保存并重载</td><td>id（可选）</td></tr>
+              <tr><td class="mono">plugin_validate</td><td>只校验 plugin.json</td><td>manifest*</td></tr>
+              <tr><td class="mono">plugin_build</td><td>编译 Go 插件</td><td>id</td></tr>
+              <tr><td class="mono">plugin_test</td><td>样例链接跑一次</td><td>id*, url*</td></tr>
+              <tr><td class="mono">plugin_debug</td><td>带日志 / 请求响应的调试运行</td><td>id*, url*</td></tr>
+              <tr><td class="mono">parse_url</td><td>按域名自动匹配插件解析</td><td>url*</td></tr>
+              <tr><td class="mono">plugin_config</td><td>读配置 schema 与值</td><td>id</td></tr>
+              <tr><td class="mono">plugin_set_config</td><td>写配置（按 schema 校验）</td><td>id*, config*</td></tr>
+              <tr><td class="mono">plugin_toggle</td><td>启用 / 禁用</td><td>id*, enabled</td></tr>
+              <tr><td class="mono">plugin_copy</td><td>另存为新插件（含内置）</td><td>id*, new_id*, name</td></tr>
+              <tr><td class="mono">plugin_delete</td><td>删除插件</td><td>id</td></tr>
+              <tr><td class="mono">plugin_upload</td><td>导入文件夹 / zip</td><td>files 或 zip_base64, source</td></tr>
+              <tr><td class="mono">plugin_export</td><td>导出 zip 的 base64</td><td>id</td></tr>
+              <tr><td class="mono">marketplace_list</td><td>读在线市场</td><td>force</td></tr>
+              <tr><td class="mono">marketplace_install</td><td>从市场安装 / 更新</td><td>id*</td></tr>
+              <tr><td class="mono">plugin_market_config</td><td>读取 / 设置市场源（换 Git 仓库）</td><td>url, proxy_prefix, cache_minutes, enabled（不传即只读）</td></tr>
+            </tbody>
+          </table></div>
+          <div class="note">典型 Agent 流程：<code>plugin_create</code> → <code>plugin_write_file</code>（写 parse.go）→
+            <code>plugin_patch</code>（微调）→ <code>plugin_save</code> → <code>plugin_validate</code> →
+            <code>plugin_build</code>（仅 go）→ <code>plugin_debug</code>（看日志修问题）→
+            <code>plugin_test</code>（确认输出）→ <code>plugin_export</code>（提交 Git 上架）。</div>
         </div>
 
         <div class="doc-section">
