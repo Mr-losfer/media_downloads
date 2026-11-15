@@ -41,6 +41,28 @@
         }
       },
       "releases": {
+        "2.5.9": {
+          "changelog": "重要：新增完整插件系统，导航「文档」改为「插件」菜单，新增插件管理页与在线插件市场。\n一个插件 = 一个文件夹 + plugin.json，Go 插件可含多个 .go 主要代码文件；公众号解析已纳入插件体系（内置，可配置 / 禁用 / 另存为副本）。\n插件在 config_schema 里定义用户可视化配置选项，列表自动出现「配置」按钮，弹窗按控件类型渲染并即时生效；通过 match.domains 等规则声明发现哪一种域名提交下载时运行本插件。\n三种执行引擎：declarative（零编译、上传即用）、go（独立子进程 + stdin/stdout JSON 行协议）、builtin（内置）；插件页支持本地上传、在线市场、启停、配置、文件编辑、差量修改、编译、测试 / 调试、导出。\n文档页新增最详细的插件开发文档，REST API 文档补齐全部接口与提交示例；MCP 工具从 11 个扩到 36 个（新增 25 个插件开发能力）。本次同步打包 fpk。",
+          "updated_at": "2026-11-15T20:25:36+08:00",
+          "os_min_version": "0.9.0",
+          "i18n": {
+            "en-US": {
+              "changelog": "Major: a full plugin system. The Docs nav becomes Plugins, with a plugin manager page and an online marketplace.\nOne plugin = one folder + plugin.json; Go plugins may contain multiple .go files. WeChat MP parsing is now a built-in plugin (configurable, disableable, clonable).\nPlugins declare user-facing config options in config_schema; a Configure button opens a typed dialog. match.domains and friends decide which submitted URLs trigger the plugin.\nThree engines: declarative (no compile), go (standalone subprocess with stdin/stdout JSON lines), builtin. The page supports local upload, marketplace, enable/disable, config, file editing, patching, build, test/debug and export.\nAdded the most detailed plugin-development docs and a complete REST API reference; MCP tools grew from 11 to 36 (25 plugin-dev tools). FPK repacked for this release."
+            }
+          },
+          "packages": {
+            "x86": {
+              "download_url": "https://gh-proxy.com/https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.9/mediasuper_2.5.9_fnos-x86.fpk",
+              "sha256": "540aa5f74c57dae866f6548c646ba9d658405ab4b9f581769ca8a12b4a54de58",
+              "size": 3936619
+            },
+            "arm": {
+              "download_url": "https://gh-proxy.com/https://github.com/Mr-losfer/media_downloads/releases/download/v2.5.9/mediasuper_2.5.9_fnos-arm.fpk",
+              "sha256": "cedc09819759ec4c0afcce871df3dca649e201824bc1107801415eef14538d40",
+              "size": 3651077
+            }
+          }
+        },
         "2.5.8": {
           "changelog": "新增防重复下载：同一个视频链接不再重复下载，提交时直接拦截、不创建第二条任务。\n设置 → 下载新增「标题防重」开关（默认关闭），开启后相同标题也不再下载；空标题不参与判断，失败 / 已取消的任务不拦截。\n批量提交里重复项统计为「跳过 N 个重复」，不会误报为失败；本次重新打包 fpk，安装后显示新的 losfer Media 图标。",
           "updated_at": "2026-11-14T03:30:46+08:00",
