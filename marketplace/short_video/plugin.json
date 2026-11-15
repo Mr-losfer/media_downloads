@@ -1,0 +1,100 @@
+{
+  "id": "short_video",
+  "name": "短视频解析（多平台）",
+  "version": "1.0.0",
+  "author": "Media Super",
+  "description": "对接 LOSFER AI 万能平台媒体解析，支持抖音 / 快手 / 小红书 / B站 / 微信视频号 / 皮皮虾 / 皮皮搞笑 / 豆包 / 即梦 AI 等分享链接，解析出标题、封面、作者与播放直链，直接加入下载队列。",
+  "homepage": "https://github.com/Mr-losfer/media_downloads/tree/main/marketplace/short_video",
+  "engine": "declarative",
+  "tags": ["短视频", "抖音", "微信视频号", "快手", "小红书", "零编译"],
+  "min_app_version": "2.5.9",
+  "match": {
+    "domains": [
+      "*.douyin.com",
+      "*.iesdouyin.com",
+      "*.kuaishou.com",
+      "*.chenzhongtech.com",
+      "*.xiaohongshu.com",
+      "*.xhslink.com",
+      "*.bilibili.com",
+      "b23.tv",
+      "weixin.qq.com",
+      "*.pipix.com",
+      "*.pipigx.com",
+      "*.doubao.com",
+      "*.jianying.com"
+    ],
+    "schemes": ["http", "https"],
+    "priority": 5
+  },
+  "capabilities": { "parse": true, "configurable": true },
+  "config_schema": [
+    {
+      "key": "api_base",
+      "label": "解析接口地址",
+      "type": "url",
+      "required": true,
+      "default": "https://t.losfer.cn/apis/parse/qsy",
+      "placeholder": "https://t.losfer.cn/apis/parse/qsy",
+      "desc": "LOSFER AI「万能平台媒体解析」（VIP，ID 15）的 GET 地址；也可填自建/代理服务，返回结构需一致。",
+      "group": "接口"
+    },
+    {
+      "key": "apikey",
+      "label": "API Key",
+      "type": "password",
+      "required": true,
+      "default": "",
+      "placeholder": "到 LOSFER AI 控制台获取",
+      "desc": "必填。未填写时接口会提示「请传入APIKEY」；插件通过 query 参数 apikey 传入，接口也支持 header / POST。",
+      "group": "接口"
+    },
+    {
+      "key": "auto_download",
+      "label": "解析后自动下载",
+      "type": "switch",
+      "default": false,
+      "desc": "开启后解析卡片自动把视频加入下载队列；默认关闭，先看结果再点「下载」。",
+      "group": "行为"
+    }
+  ],
+  "declarative": {
+    "request": {
+      "method": "GET",
+      "url": "{{config.api_base}}",
+      "query": {
+        "url": "{{source_url}}",
+        "apikey": "{{config.apikey}}"
+      },
+      "headers": {
+        "Accept": "application/json"
+      },
+      "timeout_sec": 30
+    },
+    "response": {
+      "format": "json",
+      "success_when": "data.url != ''",
+      "error_field": "msg",
+      "fields": {
+        "title": "data.title",
+        "cover": "data.cover",
+        "author": "data.author.name",
+        "description": "data.quality",
+        "publish_time": "data.publish_time"
+      },
+      "items": {
+        "from": "data.url",
+        "url": "{{value}}",
+        "title": "{{title}}",
+        "page": "{{source_url}}",
+        "kind": "video",
+        "format": "mp4",
+        "headers": {
+          "Referer": "{{source_url}}"
+        },
+        "max": 1
+      }
+    }
+  },
+  "changelog": "1.0.0 首个版本：对接万能平台媒体解析，覆盖抖音 / 快手 / 小红书 / B站 / 微信视频号（weixin.qq.com/sph/…）等分享链接，零编译、上传即用。"
+}

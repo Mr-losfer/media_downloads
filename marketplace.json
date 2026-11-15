@@ -3,9 +3,21 @@
   "name": "Media Super 官方插件市场",
   "owner": "Mr-losfer",
   "repo": "Mr-losfer/media_downloads",
-  "updated_at": "2026-11-15",
+  "updated_at": "2026-11-16",
   "base_url": "marketplace",
   "plugins": [
+    {
+      "id": "short_video",
+      "name": "短视频解析（多平台）",
+      "version": "1.0.0",
+      "description": "对接 LOSFER AI 万能平台媒体解析，支持抖音 / 快手 / 小红书 / B站 / 微信视频号（weixin.qq.com/sph/…）/ 皮皮虾 / 皮皮搞笑 / 豆包 / 即梦 AI 等分享链接，解析出标题、封面、作者与播放直链后在首页直接加入下载队列。装上后在配置弹窗填入 API Key 即可用。",
+      "author": "Media Super",
+      "engine": "declarative",
+      "tags": ["短视频", "抖音", "微信视频号", "快手", "小红书", "零编译"],
+      "path": "short_video",
+      "files": ["plugin.json", "README.md"],
+      "min_app_version": "2.5.9"
+    },
     {
       "id": "wechat_mp_lite",
       "name": "公众号解析（规则版）",
