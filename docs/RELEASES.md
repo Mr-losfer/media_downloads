@@ -4,6 +4,7 @@
 
 | 版本 | 构建时间 | 架构 | 镜像 | 说明 |
 | --- | --- | --- | --- | --- |
+| [v2.5.9](https://github.com/Mr-losfer/media_downloads/releases/tag/v2.5.9) | 2026-11-15T12:25:36Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/mr-losfer/media-super:2.5.9` | 重要：新增完整插件系统，导航「文档」改为「插件」菜单，新增插件管理页与在线插件市场 |
 | [v2.5.8](https://github.com/Mr-losfer/media_downloads/releases/tag/v2.5.8) | 2026-11-13T19:30:46Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/mr-losfer/media-super:2.5.8` | 重要：新增防重复下载，同一个视频链接不再重复下载，提交时直接拦截、不创建第二条任务 |
 | [v2.5.7](https://github.com/Mr-losfer/media_downloads/releases/tag/v2.5.7) | 2026-11-09T18:38:03Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/mr-losfer/media-super:2.5.7` | 重要：新增插件化链接解析，首页粘贴公众号文章先解析、再把视频直链作为下载对象，普通直链流程完全不变 |
 | [v2.5.6](https://github.com/Mr-losfer/media_downloads/releases/tag/v2.5.6) | 2026-11-09T11:30:50Z | amd64 / arm64 / armv7 / armv6 / 386 | `ghcr.io/mr-losfer/media-super:2.5.6` | 重要：Git 账号已更名为 Mr-losfer，更新检测、Release 下载与 Docker 镜像地址全部切到新账号 |
